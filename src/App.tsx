@@ -4,6 +4,8 @@ import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
 import { Skyline } from "./components/Skyline";
 import { Encyclopedia } from "./components/Encyclopedia";
+import { NewsProvider, useNews } from "./components/NewsContext";
+import { NewsScreen } from "./components/NewsScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { VoteScreen } from "./components/VoteScreen";
 import { firebaseConfig } from "./firebaseConfig";
@@ -24,12 +26,13 @@ import { createLocalStore } from "./lib/localStore";
 import { PERSON_LABEL, type AuthUser, type Store } from "./lib/store";
 import type { Consensus, PersonId } from "./types";
 
-type Tab = "zukan" | "vote" | "consensus";
+type Tab = "zukan" | "vote" | "consensus" | "news";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "zukan", label: "図鑑", icon: "🏰" },
   { id: "vote", label: "投票", icon: "⭐" },
   { id: "consensus", label: "合意リスト", icon: "💖" },
+  { id: "news", label: "ニュース", icon: "📰" },
 ];
 
 const DEMO_PERSON_KEY = "wdw-futari:demo:person";
@@ -37,7 +40,7 @@ const DEMO_PERSON_KEY = "wdw-futari:demo:person";
 const fb: FirebaseBackend | null = firebaseConfig ? initFirebase(firebaseConfig) : null;
 
 export function App() {
-  return fb ? <FirebaseGate fb={fb} /> : <DemoGate />;
+  return <NewsProvider>{fb ? <FirebaseGate fb={fb} /> : <DemoGate />}</NewsProvider>;
 }
 
 /** Firebase の設定がまだ無いときの「お試しモード」。データはこの端末にだけ保存される */
@@ -112,6 +115,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
   useEffect(() => store.subscribeVotes(setVotes), [store]);
   useEffect(() => store.subscribeConsensus(setConsensus), [store]);
+  const { feed } = useNews();
+  const urgent = (feed?.items ?? []).filter((n) => n.impact !== "low" && n.overlapsTrip !== "no").length;
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -150,6 +155,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onBulkVote={(ids, lv) => store.setVotes(me, ids, lv).catch(report)}
           />
         )}
+        {tab === "news" && <NewsScreen />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
       <nav className="tabs">
@@ -159,6 +165,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
               {t.icon}
             </span>
             {t.label}
+            {t.id === "news" && urgent > 0 && <span className="tab-badge">{urgent}</span>}
           </button>
         ))}
       </nav>

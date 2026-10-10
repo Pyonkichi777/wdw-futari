@@ -1,0 +1,99 @@
+{
+  "updatedAt": "2026-10-10T09:00:00+09:00",
+  "trip": { "from": "2027-04-29", "to": "2027-05-07" },
+  "items": [
+    {
+      "id": "2026-10-10-carousel-of-progress-refurb",
+      "publishedAt": "2026-10-10",
+      "title": "カルーセル・オブ・プログレスが改装で休止中。再開は「2027年春の終わりごろ」見込み",
+      "summary": "マジックキングダムのカルーセル・オブ・プログレスは2026年7月6日から休止中。新しい場面と人形を加えて、2027年の春の終わりごろに再開する見込みと報じられている。旅行期間（4/29〜5/7）に間に合うかは未定。公式サイトでも「改装中」と表示されている。",
+      "impact": "medium",
+      "category": "ride",
+      "rideIds": ["carousel-of-progress"],
+      "period": { "from": "2026-07-06", "to": null },
+      "overlapsTrip": "maybe",
+      "action": "優先度は低いので計画には入れず、出発1ヶ月前に再開日を確認する",
+      "sources": [
+        { "title": "WDW Magazine｜Disney World Refurbishment Schedule", "url": "https://www.wdw-magazine.com/disney-world-refurbishment-schedule/" },
+        { "title": "公式｜Walt Disney's Carousel of Progress", "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-carousel-of-progress/" }
+      ]
+    },
+    {
+      "id": "2026-10-10-railroad-refurb",
+      "publishedAt": "2026-10-10",
+      "title": "ウォルト・ディズニー・ワールド鉄道が改装中（再開時期は未発表）",
+      "summary": "公式サイトで、メインストリート駅・ファンタジーランド駅の鉄道が「改装中（Refurbishment）」と表示されている。再開時期の発表はまだない。",
+      "impact": "low",
+      "category": "ride",
+      "rideIds": ["railroad"],
+      "period": null,
+      "overlapsTrip": "maybe",
+      "action": "移動手段としては使わない計画なので影響は小さい。出発前に営業状況を確認",
+      "sources": [
+        { "title": "公式｜Walt Disney World Railroad", "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-world-railroad/" }
+      ]
+    },
+    {
+      "id": "2026-10-10-skyliner-2027-jan",
+      "publishedAt": "2026-10-10",
+      "title": "スカイライナー（ゴンドラ）は2027年1月24日〜30日に運休。旅行期間には影響なし",
+      "summary": "ポップセンチュリーとエプコット・ハリウッド・スタジオを結ぶゴンドラ「スカイライナー」は、2027年1月24日〜30日に定期改装で運休（期間中は代替バスあり）。4/29〜5/7の旅行とは重ならない。",
+      "impact": "low",
+      "category": "transport",
+      "rideIds": [],
+      "period": { "from": "2027-01-24", "to": "2027-01-30" },
+      "overlapsTrip": "no",
+      "action": "対応不要。旅行中の臨時運休（雷雨・強風で止まることがある）は当日アプリで確認",
+      "sources": [
+        { "title": "Disney Tourist Blog｜Skyliner Closing Dates for 2027 Refurbishment", "url": "https://www.disneytouristblog.com/skyliner-closure-dates-2027-refurbishment-disney-world/" },
+        { "title": "WDW News Today｜Disney Skyliner 2027 Refurbishment Closure Announced", "url": "https://wdwnt.com/2025/09/disney-skyliner-2027-refurbishment-closure/" }
+      ]
+    },
+    {
+      "id": "2026-10-10-everest-single-rider-ended",
+      "publishedAt": "2026-09-18",
+      "title": "エクスペディション・エベレストの「1人乗り専用の列」が廃止",
+      "summary": "エベレストのシングルライダー（1人乗り専用の列）が2026年9月20日ごろで廃止された。通常の列の乗せ方を変えて待ち時間を短くしたため、とされる。1人乗りの列で時短する作戦は使えない。",
+      "impact": "medium",
+      "category": "ride",
+      "rideIds": ["everest"],
+      "period": { "from": "2026-09-21", "to": null },
+      "overlapsTrip": "yes",
+      "action": "エベレストは5/1の朝（開園前入園）に乗る計画のままでよい",
+      "sources": [
+        { "title": "Disney Food Blog｜Disney World To End Expedition Everest Single Rider Line", "url": "https://www.disneyfoodblog.com/2026/09/18/disney-world-to-end-expedition-everest-single-rider-line/" },
+        { "title": "Disney Tourist Blog｜Single Rider is Ending at Expedition Everest", "url": "https://www.disneytouristblog.com/disney-world-confirms-single-rider-is-ending-at-expedition-everest/" }
+      ]
+    },
+    {
+      "id": "2026-10-10-soarin-across-america",
+      "publishedAt": "2026-10-10",
+      "title": "ソアリンは期間限定の「アクロス・アメリカ」を上映中",
+      "summary": "エプコットのソアリンは、アメリカ建国250周年に合わせた期間限定版「ソアリン・アクロス・アメリカ」を上映中。2027年5月にどちらの映像になっているかは未定。",
+      "impact": "low",
+      "category": "ride",
+      "rideIds": ["soarin"],
+      "period": null,
+      "overlapsTrip": "maybe",
+      "action": "出発1ヶ月前に上映中の映像を確認",
+      "sources": [
+        { "title": "公式｜Soarin' Across America", "url": "https://disneyworld.disney.go.com/attractions/epcot/soarin-across-america/" }
+      ]
+    },
+    {
+      "id": "2026-10-10-dinosaur-closed",
+      "publishedAt": "2026-02-02",
+      "title": "アニマルキングダムの「ダイナソー」は2026年2月2日に閉鎖（新エリア建設）",
+      "summary": "ダイナソーとダイノランドUSAは、新エリア「トロピカル・アメリカズ」建設のため閉鎖された。アニマルキングダムのMulti Pass対象は、エベレスト・ナヴィ・サファリなどが中心。",
+      "impact": "low",
+      "category": "ride",
+      "rideIds": [],
+      "period": { "from": "2026-02-02", "to": null },
+      "overlapsTrip": "yes",
+      "action": "対応不要（図鑑にはもともと入れていない）",
+      "sources": [
+        { "title": "Mouse Hacking｜Animal Kingdom Lightning Lanes Strategy 2026", "url": "https://www.mousehacking.com/blog/animal-kingdom-lightning-lanes-rides-and-strategy" }
+      ]
+    }
+  ]
+}

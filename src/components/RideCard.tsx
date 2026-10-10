@@ -3,6 +3,8 @@ import { parkName } from "../data/parks";
 import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
+import { IMPACT_LABEL, newsForRide } from "../lib/news";
+import { useNews } from "./NewsContext";
 import { MOTION_LABEL, motionDots, motionOf } from "../lib/motion";
 import { scoreOf } from "../lib/reviewScore";
 import type { Ride } from "../types";
@@ -118,10 +120,27 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
           <ReviewBox ride={ride} />
         </>
       )}
+      <RideNews ride={ride} />
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}
       <RideLinks ride={ride} />
       {children}
     </article>
+  );
+}
+
+/** このアトラクションに関係するニュース（旅行期間外は出さない） */
+function RideNews({ ride }: { ride: Ride }) {
+  const { feed } = useNews();
+  const list = feed ? newsForRide(ride, feed.items) : [];
+  if (list.length === 0) return null;
+  return (
+    <ul className="ride-news">
+      {list.map((n) => (
+        <li key={n.id} className={`impact-${n.impact}`}>
+          📰 <strong>{IMPACT_LABEL[n.impact]}</strong> {n.title}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -1,6 +1,6 @@
 // アプリ本体（HTML・JS・CSS）を端末に保存し、電波がなくても開けるようにする。
 // データ（投票など）はFirestoreが端末内に別途保存・同期する。
-const CACHE = "wdw-futari-v2";
+const CACHE = "wdw-futari-v3";
 const FONT_ORIGINS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -30,6 +30,22 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (url.origin !== self.location.origin) return;
+  // ニュースは毎朝更新されるので、つながるときは必ず最新を取りに行く（圏外なら最後に読んだもの）
+  if (url.pathname.endsWith("/news.json")) {
+    const key = new Request(new URL("news.json", self.registration.scope).href);
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(key, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(key).then((r) => r ?? Response.error())),
+    );
+    return;
+  }
   // HTMLは最新を優先（更新を早く届ける）。取れなければ保存しておいたものを使う
   if (req.mode === "navigate") {
     e.respondWith(

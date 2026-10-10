@@ -1319,3 +1319,87 @@ button.glass {
   font-size: 0.78rem;
   color: #ffd59a;
 }
+
+/* ---------------------------------------------------------------- ニュース */
+.tabs {
+  grid-template-columns: repeat(4, 1fr);
+}
+.tab {
+  position: relative;
+  font-size: 0.74rem;
+}
+.tab-badge {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 22px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--must);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 18px;
+}
+.news-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.news-head span {
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--surface-2);
+}
+.impact.impact-high {
+  background: var(--must);
+  color: #fff;
+}
+.impact.impact-medium {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.overlap-yes {
+  color: var(--must);
+}
+.overlap-no {
+  color: var(--muted);
+}
+.card.news.impact-high {
+  --park: linear-gradient(180deg, #ff4f6d, #ff8a5b);
+}
+.card.news.impact-medium {
+  --park: linear-gradient(180deg, #ffb36b, #ffd66b);
+}
+.card.news.impact-low {
+  --park: linear-gradient(180deg, #b7aec6, #d9d2e6);
+}
+.news-action {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.ride-news {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+.ride-news li {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.ride-news li.impact-low {
+  background: var(--surface-2);
+  color: var(--muted);
+}
