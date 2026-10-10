@@ -66,3 +66,18 @@ export interface Consensus {
   updatedBy: PersonId | null;
   updatedAt: number | null;
 }
+
+/** 口コミの評価（TripAdvisor）。数値が取れなかったものは null */
+export interface Review {
+  /** ★の平均（5点満点） */
+  rating: number | null;
+  /** 口コミ件数 */
+  count: number | null;
+  /** 内訳 [とても良い, 良い, 普通, 悪い, とても悪い] の件数 */
+  breakdown: [number, number, number, number, number] | null;
+  url: string;
+  /** 口コミの総評（日本語でひとこと） */
+  summary: string;
+  /** 注意書き（旧版の評価など） */
+  note?: string;
+}

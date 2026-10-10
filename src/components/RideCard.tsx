@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { parkName } from "../data/parks";
+import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
+import { scoreOf } from "../lib/reviewScore";
 import type { Ride } from "../types";
 
 const LL_CHIP: Record<Ride["lightningLane"], string> = {
@@ -21,6 +23,7 @@ export function RideMeta({ ride }: { ride: Ride }) {
       {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
       {ride.kind === "ride" && ride.earlyEntry && <li className="accent">開園前入園OK</li>}
       {ride.singleRider && <li className="accent">1人乗り専用の列あり</li>}
+      <ReviewChip ride={ride} />
       <li>{ride.inTokyo ? "東京にもある" : "東京にない"}</li>
       {ride.tags
         .filter((t) => t !== "ショー")
@@ -45,6 +48,46 @@ export function AccessBox({ ride }: { ride: Ride }) {
   );
 }
 
+function ReviewChip({ ride }: { ride: Ride }) {
+  const review = REVIEWS[ride.id];
+  if (!review) return null;
+  const s = scoreOf(review);
+  if (s.rating === null) return null;
+  return <li className="review-chip">口コミ★{s.rating.toFixed(1)}</li>;
+}
+
+/** 口コミの評価と総評（TripAdvisor） */
+export function ReviewBox({ ride }: { ride: Ride }) {
+  const review = REVIEWS[ride.id];
+  if (!review) return null;
+  const s = scoreOf(review);
+  return (
+    <div className="review">
+      <div className="review-head">
+        <span className="review-label">口コミ（TripAdvisor）</span>
+        {s.verdict && <span className={`verdict verdict-${s.verdict}`}>{s.verdict}</span>}
+      </div>
+      {s.rating !== null ? (
+        <p className="review-nums">
+          <strong>★{s.rating.toFixed(1)}</strong>
+          <span>（{s.count?.toLocaleString("ja-JP")}件）</span>
+          {s.positivePct !== null && <span>高評価率 {s.positivePct}%</span>}
+          {s.lowConfidence && <span className="low">件数が少なく参考値</span>}
+        </p>
+      ) : (
+        <p className="review-nums">
+          <span>{s.count !== null && s.count > 0 ? `口コミが${s.count}件と少ないため数値なし` : "★の集計は取得できず（口コミのみ）"}</span>
+        </p>
+      )}
+      <p className="review-summary">{review.summary}</p>
+      {review.note && <p className="review-note">※{review.note}</p>}
+      <a href={review.url} target="_blank" rel="noopener noreferrer">
+        TripAdvisorで口コミを読む ↗
+      </a>
+    </div>
+  );
+}
+
 export function RideCard({ ride, children, detail = false }: { ride: Ride; children?: ReactNode; detail?: boolean }) {
   return (
     <article className="card">
@@ -60,6 +103,7 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
         <>
           <p className="desc">{ride.description}</p>
           <AccessBox ride={ride} />
+          <ReviewBox ride={ride} />
         </>
       )}
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}
