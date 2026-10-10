@@ -1403,3 +1403,8 @@ button.glass {
   background: var(--surface-2);
   color: var(--muted);
 }
+.news-head .news-new {
+  background: linear-gradient(135deg, #ff4f6d, #ff8a5b);
+  color: #fff;
+  letter-spacing: 0.06em;
+}

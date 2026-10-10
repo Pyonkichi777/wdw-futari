@@ -115,8 +115,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
   useEffect(() => store.subscribeVotes(setVotes), [store]);
   useEffect(() => store.subscribeConsensus(setConsensus), [store]);
-  const { feed } = useNews();
-  const urgent = (feed?.items ?? []).filter((n) => n.impact !== "low" && n.overlapsTrip !== "no").length;
+  const { unseen: urgent } = useNews();
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
