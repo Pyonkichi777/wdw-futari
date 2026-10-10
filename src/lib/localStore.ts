@@ -42,6 +42,13 @@ export function createLocalStore(): Store {
       write(VOTES_KEY, votes);
       voteListeners.forEach((l) => l(votes));
     },
+    async setVotes(person: PersonId, rideIds: readonly string[], level: VoteLevel) {
+      const next = { ...votes[person] };
+      for (const id of rideIds) next[id] = level;
+      votes = { ...votes, [person]: next };
+      write(VOTES_KEY, votes);
+      voteListeners.forEach((l) => l(votes));
+    },
     subscribeConsensus: (cb) => listen(consensusListeners, cb, consensus),
     async saveConsensus(c: Consensus) {
       consensus = c;

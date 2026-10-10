@@ -5,6 +5,9 @@ export type LightningLane = "single" | "multi" | "none";
 
 export type Intensity = "弱い" | "中" | "強い";
 
+/** 種類: 乗り物・ショー・パレード・夜のショー・散策 */
+export type RideKind = "ride" | "show" | "parade" | "night" | "walk";
+
 export type Tag = "落下" | "高速" | "回転" | "後ろ向き" | "3D・酔いやすい" | "暗い" | "濡れる" | "ショー";
 
 export interface Ride {
@@ -12,6 +15,7 @@ export interface Ride {
   nameJa: string;
   nameEn: string;
   park: ParkId;
+  kind: RideKind;
   /** 身長制限（cm）。なしは null */
   minHeightCm: number | null;
   intensity: Intensity;
@@ -25,6 +29,8 @@ export interface Ride {
   singleRider: boolean;
   /** 東京ディズニーリゾートにも同じものがあるか */
   inTokyo: boolean;
+  /** 直営ホテル宿泊者の「開園前入園（30分前）」の対象か（2026-10時点） */
+  earlyEntry: boolean;
   description: string;
   /** 「乗らなかったら後悔するTOP10」の順位（2026-09-23作成） */
   top10?: number;

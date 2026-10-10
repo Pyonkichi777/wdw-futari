@@ -1,27 +1,47 @@
 import type { ReactNode } from "react";
 import { parkName } from "../data/parks";
+import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
 import type { Ride } from "../types";
 
-const LL_LABEL: Record<Ride["lightningLane"], string> = {
-  single: "優先パス: 個別購入（Single）",
-  multi: "優先パス: Multi Pass",
-  none: "優先パスなし",
+const LL_CHIP: Record<Ride["lightningLane"], string> = {
+  single: "Single Pass（有料・個別）",
+  multi: "Multi Pass",
+  none: "時短パスなし",
 };
 
 export function RideMeta({ ride }: { ride: Ride }) {
   return (
     <ul className="meta">
       <li className={`park park-${ride.park}`}>{parkName(ride.park)}</li>
+      <li>{KIND_LABEL[ride.kind]}</li>
       <li className={`intensity intensity-${ride.intensity}`}>負担: {ride.intensity}</li>
       <li>{ride.minHeightCm ? `身長${ride.minHeightCm}cm以上` : "身長制限なし"}</li>
-      {ride.multiPassTier === 1 && <li className="accent">Multi Pass 人気グループ</li>}
+      <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>
+      {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
+      {ride.kind === "ride" && ride.earlyEntry && <li className="accent">開園前入園OK</li>}
       {ride.singleRider && <li className="accent">1人乗り専用の列あり</li>}
       <li>{ride.inTokyo ? "東京にもある" : "東京にない"}</li>
-      {ride.tags.map((t) => (
-        <li key={t}>{t}</li>
-      ))}
+      {ride.tags
+        .filter((t) => t !== "ショー")
+        .map((t) => (
+          <li key={t}>{t}</li>
+        ))}
     </ul>
+  );
+}
+
+/** どのチケット・パスで利用できるか */
+export function AccessBox({ ride }: { ride: Ride }) {
+  return (
+    <dl className="access">
+      {accessLines(ride).map((l) => (
+        <div key={l.label} className={l.strong ? "strong" : undefined}>
+          <dt>{l.label}</dt>
+          <dd>{l.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -39,10 +59,7 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
       {detail && (
         <>
           <p className="desc">{ride.description}</p>
-          <p className="sub">
-            {LL_LABEL[ride.lightningLane]}
-            {ride.multiPassTier === 1 && "（人気グループ：事前予約はこのグループから1日1つまで）"}
-          </p>
+          <AccessBox ride={ride} />
         </>
       )}
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}

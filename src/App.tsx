@@ -116,7 +116,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
     <div className="app">
       <header className="top">
         <div>
-          <h1>どばどばWDWツアー</h1>
+          <h1>ぞうたんフロリダ上陸ツアー</h1>
           <p className="sub">{PERSON_LABEL[me]}として使用中</p>
         </div>
         <button className="link" onClick={onSwitch}>
@@ -131,7 +131,14 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       )}
       <main className="content">
         {tab === "zukan" && <Encyclopedia />}
-        {tab === "vote" && <VoteScreen me={me} votes={votes} onVote={(id, lv) => store.setVote(me, id, lv).catch(report)} />}
+        {tab === "vote" && (
+          <VoteScreen
+            me={me}
+            votes={votes}
+            onVote={(id, lv) => store.setVote(me, id, lv).catch(report)}
+            onBulkVote={(ids, lv) => store.setVotes(me, ids, lv).catch(report)}
+          />
+        )}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
       <nav className="tabs">
@@ -148,7 +155,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 function PersonPicker({ onPick, demo = false }: { onPick: (p: PersonId | null) => void; demo?: boolean }) {
   return (
     <main className="login">
-      <h1>どばどばWDWツアー</h1>
+      <h1>ぞうたんフロリダ上陸ツアー</h1>
       <p className="lead">{demo ? "お試しモード：どちらとして使いますか？" : "はじめに、あなたはどちらですか？（あとから変更はできません）"}</p>
       <div className="picker">
         {(["toshi", "tsuma"] as const).map((p) => (
@@ -199,7 +206,7 @@ function VerifyEmail({ fb, user, onRefreshed }: { fb: FirebaseBackend; user: Aut
 function ErrorScreen({ message, onLogout }: { message: string; onLogout: () => void }) {
   return (
     <main className="login">
-      <h1>どばどばWDWツアー</h1>
+      <h1>ぞうたんフロリダ上陸ツアー</h1>
       <p className="banner warn">{message}</p>
       <button className="link" onClick={onLogout}>
         ログアウト

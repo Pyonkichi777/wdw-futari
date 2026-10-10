@@ -7,6 +7,7 @@ export type Unsubscribe = () => void;
 export interface Store {
   subscribeVotes(cb: (all: AllVotes) => void): Unsubscribe;
   setVote(person: PersonId, rideId: string, level: VoteLevel): Promise<void>;
+  setVotes(person: PersonId, rideIds: readonly string[], level: VoteLevel): Promise<void>;
   subscribeConsensus(cb: (c: Consensus) => void): Unsubscribe;
   saveConsensus(c: Consensus): Promise<void>;
 }

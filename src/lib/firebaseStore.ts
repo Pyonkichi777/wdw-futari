@@ -132,6 +132,11 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     async setVote(person, rideId, level) {
       await setDoc(doc(fb.db, "votes", person), { votes: { [rideId]: level } }, { merge: true });
     },
+    async setVotes(person, rideIds, level) {
+      const patch: Record<string, VoteLevel> = {};
+      for (const id of rideIds) patch[id] = level;
+      await setDoc(doc(fb.db, "votes", person), { votes: patch }, { merge: true });
+    },
     subscribeConsensus(cb) {
       return onSnapshot(doc(fb.db, "consensus", "main"), (snap) => cb(parseConsensus(snap.data())));
     },

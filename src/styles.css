@@ -559,3 +559,54 @@ h3 {
   display: inline-flex;
   align-items: center;
 }
+
+/* ---------------------------------------------------------------- チケット・パスの説明 */
+.access {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.access div {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  gap: 8px;
+}
+.access dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+.access dd {
+  margin: 0;
+}
+.access .strong dd {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- ヘッダー: アプリ名を1行目、使用者と切り替えを2行目に */
+.top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  row-gap: 2px;
+}
+.top > div {
+  display: contents;
+}
+.top h1 {
+  grid-column: 1 / -1;
+  font-size: clamp(1rem, 5.2vw, 1.25rem);
+  white-space: nowrap;
+}
+.top button.link {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  min-height: 36px;
+}
+.login h1 {
+  font-size: clamp(1.4rem, 7vw, 1.8rem);
+}

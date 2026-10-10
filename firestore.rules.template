@@ -1,5 +1,5 @@
 rules_version = '2';
-// 「どばどばWDWツアー」用のセキュリティルール。
+// 「ぞうたんフロリダ上陸ツアー」用のセキュリティルール。
 // このファイルはひな形。実際のメールアドレスはリポジトリに書かず、
 // Firebaseコンソール「Firestore Database」→「ルール」に貼るときだけ書き換える。
 service cloud.firestore {

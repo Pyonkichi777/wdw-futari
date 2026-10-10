@@ -32,7 +32,7 @@ export function LoginScreen({ fb }: { fb: FirebaseBackend }) {
 
   return (
     <main className="login">
-      <h1>どばどばWDWツアー</h1>
+      <h1>ぞうたんフロリダ上陸ツアー</h1>
       <p className="lead">2027年5月 フロリダ・ディズニーの作戦帳</p>
 
       <section className="login-box">

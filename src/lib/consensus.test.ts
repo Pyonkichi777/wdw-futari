@@ -24,6 +24,8 @@ const ride = (id: string, top10?: number): Ride => ({
   tags: [],
   lightningLane: "multi",
   officialPath: `/attractions/magic-kingdom/${id}/`,
+  kind: "ride",
+  earlyEntry: false,
   singleRider: false,
   inTokyo: false,
   description: "",

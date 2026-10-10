@@ -19,5 +19,6 @@ export function rideLinks(ride: Ride): RideLink[] {
     { label: "動画で見る", url: youtube(`${ride.nameEn} ride through POV Walt Disney World`) },
     { label: "日本語で調べる", url: google(`${ride.nameJa} WDW ${ride.nameEn}`) },
     { label: "公式サイト", url: `${OFFICIAL_SITE}${ride.officialPath}` },
+    { label: "口コミを読む", url: google(`トリップアドバイザー ${ride.nameEn} 口コミ`) },
   ];
 }
