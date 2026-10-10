@@ -4,13 +4,19 @@ export function Skyline() {
     <svg className="skyline" viewBox="0 0 390 90" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
       <g className="fw fw-1">
         {Array.from({ length: 10 }, (_, i) => (
-          <line key={i} x1="300" y1="22" x2={300 + 13 * Math.cos((i * Math.PI) / 5)} y2={22 + 13 * Math.sin((i * Math.PI) / 5)} />
+          <line key={i} x1="300" y1="40" x2={300 + 13 * Math.cos((i * Math.PI) / 5)} y2={40 + 13 * Math.sin((i * Math.PI) / 5)} />
         ))}
       </g>
       <g className="fw fw-2">
         {Array.from({ length: 8 }, (_, i) => (
-          <line key={i} x1="92" y1="16" x2={92 + 10 * Math.cos((i * Math.PI) / 4)} y2={16 + 10 * Math.sin((i * Math.PI) / 4)} />
+          <line key={i} x1="104" y1="40" x2={104 + 10 * Math.cos((i * Math.PI) / 4)} y2={40 + 10 * Math.sin((i * Math.PI) / 4)} />
         ))}
+      </g>
+      {/* 隠れミッキー：丸3つの花火（夜空のどこかに、ときどき上がる） */}
+      <g className="fw fw-hidden">
+        <circle cx="236" cy="48" r="7.5" />
+        <circle cx="228" cy="38.5" r="4.6" />
+        <circle cx="244" cy="38.5" r="4.6" />
       </g>
       <g className="silhouette">
         {/* ヤシの木（左） */}
