@@ -1552,3 +1552,46 @@ button.glass {
 .chip.vs.on .vs-num {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* ---- 一番上へ戻るボタン */
+.scroll-top {
+  position: fixed;
+  right: 14px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  z-index: 6;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: 1;
+  color: #2a1b5c;
+  background: linear-gradient(135deg, #ffcf4d, #ff8a5b);
+  box-shadow: 0 8px 20px rgba(42, 27, 92, 0.35);
+  opacity: 0;
+  transform: translateY(12px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.scroll-top.shown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.scroll-top span {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.scroll-top small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.scroll-top:active {
+  transform: scale(0.94);
+}

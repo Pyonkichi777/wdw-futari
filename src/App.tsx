@@ -3,6 +3,7 @@ import { ConsensusScreen } from "./components/ConsensusScreen";
 import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
 import { TitleLockup } from "./components/TitleLockup";
+import { ScrollTopButton, scrollToTop } from "./components/ScrollTopButton";
 import { Skyline } from "./components/Skyline";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { NewsProvider, useNews } from "./components/NewsContext";
@@ -130,6 +131,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
     setFocus((f) => ({ rideId, seq: (f?.seq ?? 0) + 1 }));
   };
   const switchTab = (next: Tab): void => {
+    // 今いるタブをもう一度押したら一番上へ戻る
+    if (next === tab) scrollToTop();
     setTab(next);
     setFocus(null);
   };
@@ -172,6 +175,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         {tab === "news" && <NewsScreen />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
+      <ScrollTopButton />
       <nav className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? "tab on" : "tab"} onClick={() => switchTab(t.id)} aria-current={tab === t.id ? "page" : undefined}>
