@@ -8,6 +8,7 @@ import { FeatureFilter } from "./FeatureFilter";
 import { KindFilter, type KindFilterValue } from "./KindFilter";
 import { ParkFilter, type ParkFilterValue } from "./ParkFilter";
 import { RideCard } from "./RideCard";
+import { useRideFocus, type RideFocus } from "./useRideFocus";
 
 interface Props {
   me: PersonId;
@@ -15,14 +16,17 @@ interface Props {
   onVote: (rideId: string, level: VoteLevel) => void;
   /** まだ答えていないものをまとめて同じ回答にする */
   onBulkVote: (rideIds: string[], level: VoteLevel) => void;
+  focus: RideFocus | null;
+  onGoZukan: (rideId: string) => void;
 }
 
 /** A2 2人の「乗りたい」投票。相手の回答は、自分が全部答えるまで見えない */
-export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
+export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: Props) {
   const [park, setPark] = useState<ParkFilterValue>("ALL");
   const [kind, setKind] = useState<KindFilterValue>("ALL");
   const [features, setFeatures] = useState<Set<FeatureId>>(() => new Set());
   const [onlyUnanswered, setOnlyUnanswered] = useState(false);
+  const lit = useRideFocus(focus);
   const partner = partnerOf(me);
   const mine = votes[me];
   const done = answeredCount(mine, RIDES);
@@ -83,7 +87,7 @@ export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
         {rides.map((r) => {
           const partnerVote = votes[partner][r.id];
           return (
-            <RideCard key={r.id} ride={r}>
+            <RideCard key={r.id} ride={r} lit={lit === r.id} jump={{ label: "🏰 図鑑で詳しく見る", onClick: () => onGoZukan(r.id) }}>
               <p className="desc">{r.description}</p>
               <div className="vote-buttons" role="radiogroup" aria-label={`${r.nameJa}の投票`}>
                 {VOTE_ORDER.map((lv) => (

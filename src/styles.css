@@ -1475,3 +1475,33 @@ button.glass {
 .top.has-photo .title-lockup h1 {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
 }
+
+/* ---- 図鑑⇔投票の行き来ボタン */
+.ride-jump {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  min-height: 44px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: transparent;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+}
+.ride-jump:active {
+  background: var(--line);
+}
+.card.lit {
+  animation: lit-pulse 2.4s ease-out both;
+}
+@keyframes lit-pulse {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px var(--gold-soft), var(--shadow);
+  }
+  100% {
+    box-shadow: var(--shadow);
+  }
+}

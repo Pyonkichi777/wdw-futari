@@ -4,13 +4,24 @@ import { matchesFeatures, type FeatureId } from "../lib/filters";
 import { FeatureFilter } from "./FeatureFilter";
 import { KindFilter, type KindFilterValue } from "./KindFilter";
 import { ParkFilter, type ParkFilterValue } from "./ParkFilter";
+import { VOTE_LABELS } from "../lib/consensus";
+import type { Votes } from "../types";
 import { RideCard } from "./RideCard";
+import { useRideFocus, type RideFocus } from "./useRideFocus";
+
+interface Props {
+  /** 自分の投票（リンクの文言に今の回答を出す） */
+  myVotes: Votes;
+  focus: RideFocus | null;
+  onGoVote: (rideId: string) => void;
+}
 
 /** A1 アトラクション図鑑 */
-export function Encyclopedia() {
+export function Encyclopedia({ myVotes, focus, onGoVote }: Props) {
   const [park, setPark] = useState<ParkFilterValue>("ALL");
   const [kind, setKind] = useState<KindFilterValue>("ALL");
   const [features, setFeatures] = useState<Set<FeatureId>>(() => new Set());
+  const lit = useRideFocus(focus);
   const rides = RIDES.filter((r) => (park === "ALL" || r.park === park) && (kind === "ALL" || r.kind === kind) && matchesFeatures(r, features));
   return (
     <section>
@@ -23,9 +34,21 @@ export function Encyclopedia() {
       <FeatureFilter value={features} onChange={setFeatures} />
       <p className="count">{rides.length}件を表示</p>
       <div className="list">
-        {rides.map((r) => (
-          <RideCard key={r.id} ride={r} detail />
-        ))}
+        {rides.map((r) => {
+          const mine = myVotes[r.id];
+          return (
+          <RideCard
+            key={r.id}
+            ride={r}
+            detail
+            lit={lit === r.id}
+            jump={{
+              label: mine ? `⭐ 投票済み「${VOTE_LABELS[mine]}」を変える` : "⭐ これに投票する",
+              onClick: () => onGoVote(r.id),
+            }}
+          />
+          );
+        })}
         {rides.length === 0 && <p className="empty">この条件に当てはまるものはありません。</p>}
       </div>
     </section>

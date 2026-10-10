@@ -102,9 +102,15 @@ export function ReviewBox({ ride }: { ride: Ride }) {
   );
 }
 
-export function RideCard({ ride, children, detail = false }: { ride: Ride; children?: ReactNode; detail?: boolean }) {
+/** 図鑑⇔投票の行き来ボタン */
+export interface RideJump {
+  label: string;
+  onClick: () => void;
+}
+
+export function RideCard({ ride, children, detail = false, jump, lit = false }: { ride: Ride; children?: ReactNode; detail?: boolean; jump?: RideJump; lit?: boolean }) {
   return (
-    <article className={`card park-${ride.park}`}>
+    <article id={`ride-${ride.id}`} className={`card park-${ride.park}${lit ? " lit" : ""}`}>
       <header className="card-head">
         {ride.top10 !== undefined && <span className="top10">★TOP{ride.top10}</span>}
         <div>
@@ -124,6 +130,11 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}
       <RideLinks ride={ride} />
       {children}
+      {jump && (
+        <button className="ride-jump" onClick={jump.onClick}>
+          {jump.label} →
+        </button>
+      )}
     </article>
   );
 }

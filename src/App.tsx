@@ -9,6 +9,7 @@ import { NewsProvider, useNews } from "./components/NewsContext";
 import { NewsScreen } from "./components/NewsScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { VoteScreen } from "./components/VoteScreen";
+import type { RideFocus } from "./components/useRideFocus";
 import { firebaseConfig } from "./firebaseConfig";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./lib/consensus";
 import { authErrorMessage } from "./lib/errors";
@@ -122,6 +123,17 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
   const report = (e: unknown): void => setError(authErrorMessage(e));
 
+  // 図鑑⇔投票のリンク：タブを切り替えて、そのアトラクションのカードまで飛ぶ
+  const [focus, setFocus] = useState<RideFocus | null>(null);
+  const jumpTo = (next: Tab, rideId: string): void => {
+    setTab(next);
+    setFocus((f) => ({ rideId, seq: (f?.seq ?? 0) + 1 }));
+  };
+  const switchTab = (next: Tab): void => {
+    setTab(next);
+    setFocus(null);
+  };
+
   return (
     <div className="app">
       <header
@@ -146,13 +158,15 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         </p>
       )}
       <main className="content">
-        {tab === "zukan" && <Encyclopedia />}
+        {tab === "zukan" && <Encyclopedia myVotes={votes[me]} focus={focus} onGoVote={(id) => jumpTo("vote", id)} />}
         {tab === "vote" && (
           <VoteScreen
             me={me}
             votes={votes}
             onVote={(id, lv) => store.setVote(me, id, lv).catch(report)}
             onBulkVote={(ids, lv) => store.setVotes(me, ids, lv).catch(report)}
+            focus={focus}
+            onGoZukan={(id) => jumpTo("zukan", id)}
           />
         )}
         {tab === "news" && <NewsScreen />}
@@ -160,7 +174,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       </main>
       <nav className="tabs">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "tab on" : "tab"} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined}>
+          <button key={t.id} className={tab === t.id ? "tab on" : "tab"} onClick={() => switchTab(t.id)} aria-current={tab === t.id ? "page" : undefined}>
             <span className="tab-icon" aria-hidden="true">
               {t.icon}
             </span>
