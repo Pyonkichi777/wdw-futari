@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ConsensusScreen } from "./components/ConsensusScreen";
 import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
+import { TitleLockup } from "./components/TitleLockup";
 import { Skyline } from "./components/Skyline";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { NewsProvider, useNews } from "./components/NewsContext";
@@ -128,7 +129,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         style={photo ? { backgroundImage: `linear-gradient(160deg, rgba(20, 12, 50, 0.85) 0%, rgba(20, 12, 50, 0.55) 40%, rgba(20, 12, 50, 0.1) 72%), url(${photo})` } : undefined}
       >
         <div className="top-text">
-          <h1>ぞうたんフロリダ上陸ツアー</h1>
+          <TitleLockup />
           <Countdown />
           <p className="sub">{PERSON_LABEL[me]}として使用中</p>
         </div>

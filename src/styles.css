@@ -1408,3 +1408,70 @@ button.glass {
   color: #fff;
   letter-spacing: 0.06em;
 }
+
+/* ================================================================ アプリ名のロゴ（金のグラデーションをやめ、上品な2段組みに） */
+.title-lockup {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+}
+.title-lockup .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+  color: #f6dc9c;
+}
+.title-lockup .eyebrow::after {
+  content: "";
+  flex: 0 0 44px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(246, 220, 156, 0.9), rgba(246, 220, 156, 0));
+}
+.title-lockup h1,
+.top .title-lockup h1,
+.login-hero .title-lockup h1 {
+  margin: 0;
+  display: grid;
+  gap: 0;
+  color: #fff;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  animation: none;
+  font-family: var(--font-body);
+  font-weight: 800;
+  white-space: normal;
+  text-shadow: 0 2px 14px rgba(10, 6, 30, 0.35);
+}
+.title-lockup .t1 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: rgba(255, 255, 255, 0.82);
+}
+.title-lockup .t2 {
+  font-size: clamp(1.45rem, 7vw, 1.75rem);
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+}
+.title-lockup.center {
+  justify-items: center;
+  text-align: center;
+}
+.title-lockup.center .eyebrow::before {
+  content: "";
+  flex: 0 0 44px;
+  height: 1px;
+  background: linear-gradient(270deg, rgba(246, 220, 156, 0.9), rgba(246, 220, 156, 0));
+}
+.title-lockup.center .t2 {
+  font-size: clamp(1.6rem, 8vw, 2rem);
+}
+.top.has-photo .title-lockup h1 {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
