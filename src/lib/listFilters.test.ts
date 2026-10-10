@@ -4,7 +4,7 @@ import { EMPTY_FILTERS, applyFilters, isFiltered, parseFilters } from "./listFil
 
 describe("絞り込み条件の保存と読み直し", () => {
   it("保存した条件をそのまま読み直せる", () => {
-    const f = { park: "MK", kind: "ride", features: ["top10", "single"], statuses: ["must", "none"] };
+    const f = { park: "MK", kind: "greet", features: ["top10", "single"], statuses: ["must", "none"], q: "ミッキー" };
     expect(parseFilters(JSON.parse(JSON.stringify(f)))).toEqual(f);
   });
 
@@ -15,7 +15,7 @@ describe("絞り込み条件の保存と読み直し", () => {
 
   it("知らない値（古い版の条件など）は捨てる", () => {
     const f = parseFilters({ park: "XX", kind: 3, features: ["top10", "消えた条件", "top10"], statuses: ["must", "maybe"] });
-    expect(f).toEqual({ park: "ALL", kind: "ALL", features: ["top10"], statuses: ["must"] });
+    expect(f).toEqual({ park: "ALL", kind: "ALL", features: ["top10"], statuses: ["must"], q: "" });
   });
 
   it("絞り込み中かどうか", () => {

@@ -5,8 +5,11 @@ export type LightningLane = "single" | "multi" | "none";
 
 export type Intensity = "弱い" | "中" | "強い";
 
-/** 種類: 乗り物・ショー・パレード・夜のショー・散策 */
-export type RideKind = "ride" | "show" | "parade" | "night" | "walk";
+/** 種類: 乗り物・ショー・パレード・夜のショー・散策・グリーティング */
+export type RideKind = "ride" | "show" | "parade" | "night" | "walk" | "greet";
+
+/** グリーティングの会い方: always = 決まった時間帯ずっと／timed = 時刻を決めて登場／roaming = 歩き回っている */
+export type GreetStyle = "always" | "timed" | "roaming";
 
 export type Tag = "落下" | "高速" | "回転" | "後ろ向き" | "3D・酔いやすい" | "暗い" | "濡れる" | "ショー";
 
@@ -38,6 +41,8 @@ export interface Ride {
   officialPath: string;
   /** 改装・閉鎖予定など、出発前に確認が必要な事項 */
   caution?: string;
+  /** グリーティングのときだけ: 会えるキャラクターと会い方 */
+  greet?: { characters: string; style: GreetStyle };
 }
 
 export interface Park {

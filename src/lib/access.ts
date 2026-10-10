@@ -1,4 +1,4 @@
-import type { Ride, RideKind } from "../types";
+import type { GreetStyle, Ride, RideKind } from "../types";
 import { MOTION_LABEL, motionDots, motionOf } from "./motion";
 
 export const KIND_LABEL: Record<RideKind, string> = {
@@ -7,6 +7,13 @@ export const KIND_LABEL: Record<RideKind, string> = {
   parade: "パレード",
   night: "夜のショー",
   walk: "散策",
+  greet: "グリーティング",
+};
+
+const GREET_STYLE_LABEL: Record<GreetStyle, string> = {
+  always: "決まった時間帯ならいつでも並んで会える",
+  timed: "時刻を決めて登場（1日に数回。当日の時刻は公式アプリで確認）",
+  roaming: "パーク内を歩き回っている（見つけたら会える）",
 };
 
 export interface AccessLine {
@@ -21,6 +28,15 @@ export function accessLines(ride: Ride): AccessLine[] {
   const lines: AccessLine[] = [
     { label: "入園チケット", value: "購入済みの5日間パークホッパー券で利用できる（追加料金なし）" },
   ];
+
+  if (ride.greet) {
+    lines.push(
+      { label: "会えるキャラクター", value: ride.greet.characters, strong: true },
+      { label: "会い方", value: GREET_STYLE_LABEL[ride.greet.style] },
+      { label: "時短パス", value: "なし（グリーティングは時短パスの対象外。並んで会う）" },
+    );
+    return lines;
+  }
 
   switch (ride.lightningLane) {
     case "single":

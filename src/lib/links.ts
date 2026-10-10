@@ -17,7 +17,7 @@ const youtube = (q: string): string => `https://www.youtube.com/results?search_q
  */
 export function rideLinks(ride: Ride): RideLink[] {
   return [
-    { label: "動画で見る", url: youtube(`${ride.nameEn} ride through POV Walt Disney World`) },
+    { label: "動画で見る", url: youtube(ride.kind === "greet" ? `${ride.nameEn} meet and greet Walt Disney World` : `${ride.nameEn} ride through POV Walt Disney World`) },
     { label: "日本語で調べる", url: google(`${ride.nameJa} WDW ${ride.nameEn}`) },
     { label: "公式サイト", url: `${OFFICIAL_SITE}${ride.officialPath}` },
     { label: "口コミを読む", url: REVIEWS[ride.id]?.url ?? google(`トリップアドバイザー ${ride.nameEn} 口コミ`) },

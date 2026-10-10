@@ -1,15 +1,16 @@
+import { GREETINGS } from "./greetings";
 import type { Ride } from "../types";
 
 /**
  * アトラクションの初期データ。
- * 対象: 4パークの乗り物・ショー・パレード・夜のショー・散策路のすべて（動物展示単体・キャラクターグリーティング・
- * ストリートの演奏・ギャラリー・遊び場・季節限定パーティーのイベントは除く）。
+ * 対象: 4パークの乗り物・ショー・パレード・夜のショー・散策路のすべて（動物展示単体・
+ * ストリートの演奏・ギャラリー・遊び場・季節限定パーティーのイベントは除く）。キャラクターグリーティングは greetings.ts。
  * 身長制限・優先パスの種類・開園前入園の対象・公式ページのURLは、2026-10-10に公式サイトで確認した内容。
  * 仕組みは年単位で変わるため、出発1ヶ月前（2027年3月末）に再検証すること。
  */
 export const DATA_AS_OF = "2026-10-10";
 
-export const RIDES: readonly Ride[] = [
+const BASE_RIDES: readonly Ride[] = [
   {
     id: "flight-of-passage",
     officialPath: "/attractions/animal-kingdom/avatar-flight-of-passage/",
@@ -1517,5 +1518,8 @@ export const RIDES: readonly Ride[] = [
     caution: "上演時刻は出発の1〜2ヶ月前に確認",
   },
 ];
+
+/** 図鑑・投票の対象すべて（アトラクション＋グリーティング） */
+export const RIDES: readonly Ride[] = [...BASE_RIDES, ...GREETINGS];
 
 export const rideById = (id: string): Ride | undefined => RIDES.find((r) => r.id === id);

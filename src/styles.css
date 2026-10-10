@@ -1599,3 +1599,52 @@ button.glass {
   display: block;
   margin: 2px 0 6px auto;
 }
+
+/* ---- 検索 */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 4px 0 10px;
+}
+.search-box input {
+  width: 100%;
+  min-height: 46px;
+  /* 16px未満だと iPhone が勝手に拡大するので 1rem 以上 */
+  font-size: 1rem;
+  padding: 10px 42px 10px 40px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: inherit;
+  box-shadow: var(--shadow);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.search-box input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.search-box input::-webkit-search-cancel-button {
+  display: none;
+}
+.search-icon {
+  position: absolute;
+  left: 13px;
+  font-size: 1rem;
+  pointer-events: none;
+}
+.search-clear {
+  position: absolute;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+}

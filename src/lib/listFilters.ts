@@ -1,9 +1,10 @@
 import { PARKS } from "../data/parks";
 import type { ParkId, Ride, RideKind, Votes } from "../types";
 import { FEATURES, matchesFeatures, type FeatureId } from "./filters";
+import { matchesQuery } from "./search";
 import { VOTE_STATUSES, matchesVoteStatus, type VoteStatus } from "./voteFilter";
 
-const KIND_IDS: readonly RideKind[] = ["ride", "show", "parade", "night", "walk"];
+const KIND_IDS: readonly RideKind[] = ["ride", "show", "greet", "parade", "night", "walk"];
 
 /** 図鑑・投票の絞り込み条件。タブを移ってもアプリを閉じても残す */
 export interface ListFilters {
@@ -11,11 +12,13 @@ export interface ListFilters {
   kind: RideKind | "ALL";
   features: FeatureId[];
   statuses: VoteStatus[];
+  /** 検索の言葉 */
+  q: string;
 }
 
-export const EMPTY_FILTERS: ListFilters = { park: "ALL", kind: "ALL", features: [], statuses: [] };
+export const EMPTY_FILTERS: ListFilters = { park: "ALL", kind: "ALL", features: [], statuses: [], q: "" };
 
-export const isFiltered = (f: ListFilters): boolean => f.park !== "ALL" || f.kind !== "ALL" || f.features.length > 0 || f.statuses.length > 0;
+export const isFiltered = (f: ListFilters): boolean => f.park !== "ALL" || f.kind !== "ALL" || f.features.length > 0 || f.statuses.length > 0 || f.q.trim() !== "";
 
 const oneOf = <T extends string>(v: unknown, allowed: readonly T[]): v is T => typeof v === "string" && (allowed as readonly string[]).includes(v);
 
@@ -30,6 +33,7 @@ export function parseFilters(raw: unknown): ListFilters {
     kind: oneOf(r.kind, KIND_IDS) ? r.kind : "ALL",
     features: listOf(r.features, FEATURES.map((f) => f.id)),
     statuses: listOf(r.statuses, VOTE_STATUSES),
+    q: typeof r.q === "string" ? r.q.slice(0, 100) : "",
   };
 }
 
@@ -40,7 +44,7 @@ export function parseFilters(raw: unknown): ListFilters {
 export function applyFilters(all: readonly Ride[], f: ListFilters, votes: Votes, keepId?: string): { base: Ride[]; rides: Ride[] } {
   const features = new Set(f.features);
   const statuses = new Set(f.statuses);
-  const base = all.filter((r) => (f.park === "ALL" || r.park === f.park) && (f.kind === "ALL" || r.kind === f.kind) && matchesFeatures(r, features));
+  const base = all.filter((r) => (f.park === "ALL" || r.park === f.park) && (f.kind === "ALL" || r.kind === f.kind) && matchesFeatures(r, features) && matchesQuery(r, f.q));
   const shown = new Set(base.filter((r) => matchesVoteStatus(votes, r.id, statuses)).map((r) => r.id));
   if (keepId) shown.add(keepId);
   return { base, rides: all.filter((r) => shown.has(r.id)) };

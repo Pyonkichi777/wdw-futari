@@ -7,7 +7,7 @@ import { IMPACT_LABEL, newsForRide } from "../lib/news";
 import { useNews } from "./NewsContext";
 import { MOTION_LABEL, motionDots, motionOf } from "../lib/motion";
 import { scoreOf } from "../lib/reviewScore";
-import type { Ride } from "../types";
+import type { GreetStyle, Ride } from "../types";
 
 const LL_CHIP: Record<Ride["lightningLane"], string> = {
   single: "Single Pass（有料・個別）",
@@ -15,13 +15,25 @@ const LL_CHIP: Record<Ride["lightningLane"], string> = {
   none: "時短パスなし",
 };
 
+const GREET_CHIP: Record<GreetStyle, string> = {
+  always: "時間帯内ならいつでも",
+  timed: "時刻を決めて登場",
+  roaming: "歩き回っている",
+};
+
 export function RideMeta({ ride }: { ride: Ride }) {
   return (
     <ul className="meta">
       <li className={`park park-${ride.park}`}>{parkName(ride.park)}</li>
       <li>{KIND_LABEL[ride.kind]}</li>
-      <li className={`intensity intensity-${ride.intensity}`}>負担: {ride.intensity}</li>
-      <li>{ride.minHeightCm ? `身長${ride.minHeightCm}cm以上` : "身長制限なし"}</li>
+      {ride.greet ? (
+        <li className="accent">{GREET_CHIP[ride.greet.style]}</li>
+      ) : (
+        <>
+          <li className={`intensity intensity-${ride.intensity}`}>負担: {ride.intensity}</li>
+          <li>{ride.minHeightCm ? `身長${ride.minHeightCm}cm以上` : "身長制限なし"}</li>
+        </>
+      )}
       <MotionChip ride={ride} />
       <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>
       {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
