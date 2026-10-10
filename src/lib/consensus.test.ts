@@ -23,6 +23,7 @@ const ride = (id: string, top10?: number): Ride => ({
   intensity: "弱い",
   tags: [],
   lightningLane: "multi",
+  officialPath: `/attractions/magic-kingdom/${id}/`,
   singleRider: false,
   inTokyo: false,
   description: "",

@@ -15,6 +15,7 @@ export function RideMeta({ ride }: { ride: Ride }) {
       <li className={`park park-${ride.park}`}>{parkName(ride.park)}</li>
       <li className={`intensity intensity-${ride.intensity}`}>負担: {ride.intensity}</li>
       <li>{ride.minHeightCm ? `身長${ride.minHeightCm}cm以上` : "身長制限なし"}</li>
+      {ride.multiPassTier === 1 && <li className="accent">Multi Pass 人気グループ</li>}
       {ride.singleRider && <li className="accent">1人乗り専用の列あり</li>}
       <li>{ride.inTokyo ? "東京にもある" : "東京にない"}</li>
       {ride.tags.map((t) => (
@@ -38,7 +39,10 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
       {detail && (
         <>
           <p className="desc">{ride.description}</p>
-          <p className="sub">{LL_LABEL[ride.lightningLane]}</p>
+          <p className="sub">
+            {LL_LABEL[ride.lightningLane]}
+            {ride.multiPassTier === 1 && "（人気グループ：事前予約はこのグループから1日1つまで）"}
+          </p>
         </>
       )}
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}

@@ -12,6 +12,17 @@ describe("アトラクションのリンク", () => {
     }
   });
 
+  it("公式サイトは公式ドメインの直接リンク", () => {
+    for (const r of RIDES) {
+      const official = rideLinks(r).find((l) => l.label === "公式サイト");
+      expect(official?.url).toMatch(/^https:\/\/disneyworld\.disney\.go\.com\/(attractions|entertainment)\/[a-z-]+\/[a-z0-9-]+\/$/);
+    }
+  });
+
+  it("Multi Passのグループは、Multi Passの対象にだけ付いている", () => {
+    for (const r of RIDES) if (r.multiPassTier !== undefined) expect(r.lightningLane).toBe("multi");
+  });
+
   it("アポストロフィや＆を含む名前も壊れない", () => {
     const r = RIDES.find((x) => x.id === "runaway-railway");
     expect(r).toBeDefined();

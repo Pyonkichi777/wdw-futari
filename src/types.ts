@@ -17,12 +17,19 @@ export interface Ride {
   intensity: Intensity;
   tags: readonly Tag[];
   lightningLane: LightningLane;
+  /**
+   * Multi Pass のグループ（MK・EPCOT・スタジオのみ）。
+   * 1 = 人気グループ：事前予約の3本のうち、このグループからは1日1つまで
+   */
+  multiPassTier?: 1 | 2;
   singleRider: boolean;
   /** 東京ディズニーリゾートにも同じものがあるか */
   inTokyo: boolean;
   description: string;
   /** 「乗らなかったら後悔するTOP10」の順位（2026-09-23作成） */
   top10?: number;
+  /** ディズニー公式サイトのページ（disneyworld.disney.go.com 以下のパス） */
+  officialPath: string;
   /** 改装・閉鎖予定など、出発前に確認が必要な事項 */
   caution?: string;
 }

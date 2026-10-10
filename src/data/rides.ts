@@ -4,7 +4,7 @@ import type { Ride } from "../types";
  * アトラクションの初期データ（2026年10月時点の情報）。
  * 身長制限・優先パスの種類・1人乗り専用の列は年単位で変わるため、
  * 出発1ヶ月前（2027年3月末）に公式サイトで再検証すること。
- * 身長制限はインチ表記をcmに換算した目安。
+ * 身長制限・優先パスの種類・公式ページのURLは、2026-10-10に公式サイトで確認済み。
  */
 export const DATA_AS_OF = "2026-10";
 
@@ -12,6 +12,7 @@ export const RIDES: readonly Ride[] = [
   // ---------------------------------------------------------------- アニマルキングダム
   {
     id: "flight-of-passage",
+    officialPath: "/attractions/animal-kingdom/avatar-flight-of-passage/",
     nameJa: "アバター：フライト・オブ・パッセージ",
     nameEn: "Avatar Flight of Passage",
     park: "AK",
@@ -26,6 +27,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "navi-river",
+    officialPath: "/attractions/animal-kingdom/navi-river-journey/",
     nameJa: "ナヴィ・リバー・ジャーニー",
     nameEn: "Na'vi River Journey",
     park: "AK",
@@ -39,6 +41,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "everest",
+    officialPath: "/attractions/animal-kingdom/expedition-everest/",
     nameJa: "エクスペディション・エベレスト",
     nameEn: "Expedition Everest",
     park: "AK",
@@ -53,6 +56,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "kilimanjaro",
+    officialPath: "/attractions/animal-kingdom/kilimanjaro-safaris/",
     nameJa: "キリマンジャロ・サファリ",
     nameEn: "Kilimanjaro Safaris",
     park: "AK",
@@ -67,6 +71,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "kali-river",
+    officialPath: "/attractions/animal-kingdom/kali-river-rapids/",
     nameJa: "カリ・リバー・ラピッズ",
     nameEn: "Kali River Rapids",
     park: "AK",
@@ -80,6 +85,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "lion-king",
+    officialPath: "/entertainment/animal-kingdom/festival-of-the-lion-king/",
     nameJa: "フェスティバル・オブ・ザ・ライオン・キング",
     nameEn: "Festival of the Lion King",
     park: "AK",
@@ -95,6 +101,7 @@ export const RIDES: readonly Ride[] = [
   // ---------------------------------------------------------------- ハリウッド・スタジオ
   {
     id: "rise-of-the-resistance",
+    officialPath: "/attractions/hollywood-studios/star-wars-rise-of-the-resistance/",
     nameJa: "スター・ウォーズ：ライズ・オブ・ザ・レジスタンス",
     nameEn: "Star Wars: Rise of the Resistance",
     park: "HS",
@@ -109,6 +116,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "slinky-dog",
+    officialPath: "/attractions/hollywood-studios/slinky-dog-dash/",
+    multiPassTier: 1,
     nameJa: "スリンキー・ドッグ・ダッシュ",
     nameEn: "Slinky Dog Dash",
     park: "HS",
@@ -123,6 +132,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "runaway-railway",
+    officialPath: "/attractions/hollywood-studios/mickey-minnies-runaway-railway/",
+    multiPassTier: 1,
     nameJa: "ミッキー＆ミニーのランナウェイ・レイルウェイ",
     nameEn: "Mickey & Minnie's Runaway Railway",
     park: "HS",
@@ -137,6 +148,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "tower-of-terror",
+    officialPath: "/attractions/hollywood-studios/twilight-zone-tower-of-terror/",
+    multiPassTier: 2,
     nameJa: "トワイライトゾーン・タワー・オブ・テラー",
     nameEn: "The Twilight Zone Tower of Terror",
     park: "HS",
@@ -150,6 +163,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "millennium-falcon",
+    officialPath: "/attractions/hollywood-studios/millennium-falcon-smugglers-run/",
+    multiPassTier: 1,
     nameJa: "ミレニアム・ファルコン：スマグラーズ・ラン",
     nameEn: "Millennium Falcon: Smugglers Run",
     park: "HS",
@@ -163,8 +178,10 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "rock-n-roller",
-    nameJa: "ロックンローラー・コースター",
-    nameEn: "Rock 'n' Roller Coaster",
+    officialPath: "/attractions/hollywood-studios/rock-and-roller-coaster-starring-muppets/",
+    multiPassTier: 1,
+    nameJa: "ロックンローラー・コースター・スターリング・ザ・マペッツ",
+    nameEn: "Rock 'n' Roller Coaster Starring The Muppets",
     park: "HS",
     minHeightCm: 122,
     intensity: "強い",
@@ -172,11 +189,13 @@ export const RIDES: readonly Ride[] = [
     lightningLane: "multi",
     singleRider: true,
     inTokyo: false,
-    description: "暗闇の中を急加速で発進し、宙返りもあるコースター。",
-    caution: "テーマを変える改装が報じられている。2027年5月の営業状態とテーマは出発前に確認",
+    description: "マペッツのバンド「エレクトリック・メイヘム」と、暗闇のハリウッドを急加速で駆け抜ける宙返りありのコースター（旧エアロスミス版からリニューアル）。",
+    caution: "1人乗り専用の列が続いているかは出発前に確認",
   },
   {
     id: "toy-story-mania",
+    officialPath: "/attractions/hollywood-studios/toy-story-mania/",
+    multiPassTier: 2,
     nameJa: "トイ・ストーリー・マニア！",
     nameEn: "Toy Story Mania!",
     park: "HS",
@@ -190,6 +209,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "star-tours",
+    officialPath: "/attractions/hollywood-studios/star-tours/",
+    multiPassTier: 2,
     nameJa: "スター・ツアーズ",
     nameEn: "Star Tours – The Adventures Continue",
     park: "HS",
@@ -205,6 +226,7 @@ export const RIDES: readonly Ride[] = [
   // ---------------------------------------------------------------- エプコット
   {
     id: "guardians",
+    officialPath: "/attractions/epcot/guardians-of-the-galaxy-cosmic-rewind/",
     nameJa: "ガーディアンズ・オブ・ギャラクシー：コズミック・リワインド",
     nameEn: "Guardians of the Galaxy: Cosmic Rewind",
     park: "EP",
@@ -219,6 +241,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "test-track",
+    officialPath: "/attractions/epcot/test-track/",
+    multiPassTier: 1,
     nameJa: "テスト・トラック",
     nameEn: "Test Track",
     park: "EP",
@@ -233,6 +257,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "remy",
+    officialPath: "/attractions/epcot/remys-ratatouille-adventure/",
+    multiPassTier: 1,
     nameJa: "レミーのおいしいレストラン",
     nameEn: "Remy's Ratatouille Adventure",
     park: "EP",
@@ -247,6 +273,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "frozen",
+    officialPath: "/attractions/epcot/frozen-ever-after/",
+    multiPassTier: 1,
     nameJa: "フローズン・エバー・アフター",
     nameEn: "Frozen Ever After",
     park: "EP",
@@ -260,8 +288,10 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "soarin",
-    nameJa: "ソアリン・アラウンド・ザ・ワールド",
-    nameEn: "Soarin' Around the World",
+    officialPath: "/attractions/epcot/soarin-across-america/",
+    multiPassTier: 2,
+    nameJa: "ソアリン・アクロス・アメリカ",
+    nameEn: "Soarin' Across America",
     park: "EP",
     minHeightCm: 102,
     intensity: "弱い",
@@ -269,10 +299,13 @@ export const RIDES: readonly Ride[] = [
     lightningLane: "multi",
     singleRider: false,
     inTokyo: true,
-    description: "大きなスクリーンの前で宙に浮き、世界の名所を飛ぶ。東京のソアリンとは映像が違う場合がある。",
+    description: "大きなスクリーンの前で宙に浮き、アメリカ各地の絶景と都市の上を飛ぶ。アメリカ建国250周年の期間限定版。",
+    caution: "期間限定の映像。2027年5月に「アクロス・アメリカ」と「アラウンド・ザ・ワールド」のどちらを上映中か出発前に確認",
   },
   {
     id: "mission-space",
+    officialPath: "/attractions/epcot/mission-space/",
+    multiPassTier: 2,
     nameJa: "ミッション：スペース",
     nameEn: "Mission: SPACE",
     park: "EP",
@@ -286,6 +319,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "spaceship-earth",
+    officialPath: "/attractions/epcot/spaceship-earth/",
+    multiPassTier: 2,
     nameJa: "スペースシップ・アース",
     nameEn: "Spaceship Earth",
     park: "EP",
@@ -301,6 +336,7 @@ export const RIDES: readonly Ride[] = [
   // ---------------------------------------------------------------- マジックキングダム
   {
     id: "tron",
+    officialPath: "/attractions/magic-kingdom/tron-lightcycle-run/",
     nameJa: "トロン・ライトサイクル・ラン",
     nameEn: "TRON Lightcycle / Run",
     park: "MK",
@@ -315,6 +351,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "seven-dwarfs",
+    officialPath: "/attractions/magic-kingdom/seven-dwarfs-mine-train/",
     nameJa: "七人のこびとのマイントレイン",
     nameEn: "Seven Dwarfs Mine Train",
     park: "MK",
@@ -328,6 +365,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "space-mountain",
+    officialPath: "/attractions/magic-kingdom/space-mountain/",
+    multiPassTier: 1,
     nameJa: "スペース・マウンテン",
     nameEn: "Space Mountain",
     park: "MK",
@@ -341,6 +380,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "big-thunder",
+    officialPath: "/attractions/magic-kingdom/big-thunder-mountain-railroad/",
+    multiPassTier: 1,
     nameJa: "ビッグサンダー・マウンテン",
     nameEn: "Big Thunder Mountain Railroad",
     park: "MK",
@@ -354,6 +395,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "tiana",
+    officialPath: "/attractions/magic-kingdom/tianas-bayou-adventure/",
+    multiPassTier: 1,
     nameJa: "ティアナズ・バイユー・アドベンチャー",
     nameEn: "Tiana's Bayou Adventure",
     park: "MK",
@@ -367,6 +410,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "haunted-mansion",
+    officialPath: "/attractions/magic-kingdom/haunted-mansion/",
+    multiPassTier: 2,
     nameJa: "ホーンテッドマンション",
     nameEn: "Haunted Mansion",
     park: "MK",
@@ -380,6 +425,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "pirates",
+    officialPath: "/attractions/magic-kingdom/pirates-of-the-caribbean/",
+    multiPassTier: 2,
     nameJa: "カリブの海賊",
     nameEn: "Pirates of the Caribbean",
     park: "MK",
@@ -393,6 +440,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "peter-pan",
+    officialPath: "/attractions/magic-kingdom/peter-pan-flight/",
+    multiPassTier: 1,
     nameJa: "ピーターパン空の旅",
     nameEn: "Peter Pan's Flight",
     park: "MK",
@@ -406,6 +455,8 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "jungle-cruise",
+    officialPath: "/attractions/magic-kingdom/jungle-cruise/",
+    multiPassTier: 1,
     nameJa: "ジャングルクルーズ",
     nameEn: "Jungle Cruise",
     park: "MK",
@@ -419,6 +470,7 @@ export const RIDES: readonly Ride[] = [
   },
   {
     id: "festival-of-fantasy",
+    officialPath: "/entertainment/magic-kingdom/festival-fantasy-parade/",
     nameJa: "ディズニー・フェスティバル・オブ・ファンタジー・パレード",
     nameEn: "Disney Festival of Fantasy Parade",
     park: "MK",
@@ -432,7 +484,23 @@ export const RIDES: readonly Ride[] = [
     caution: "上演時刻・上演日は出発の1〜2ヶ月前に確認",
   },
   {
+    id: "starlight-parade",
+    officialPath: "/entertainment/magic-kingdom/starlight-dream-night-away-parade/",
+    nameJa: "ディズニー・スターライト：ドリーム・ザ・ナイト・アウェイ（夜のパレード）",
+    nameEn: "Disney Starlight: Dream the Night Away",
+    park: "MK",
+    minHeightCm: null,
+    intensity: "弱い",
+    tags: ["ショー"],
+    lightningLane: "none",
+    singleRider: false,
+    inTokyo: false,
+    description: "マジックキングダムの夜のパレード。ディズニー作品の夢のような場面を、光をまとったフロートで描く。",
+    caution: "上演日・時刻は出発の1〜2ヶ月前に確認",
+  },
+  {
     id: "happily-ever-after",
+    officialPath: "/entertainment/magic-kingdom/happily-ever-after-fireworks/",
     nameJa: "ハピリー・エバー・アフター（花火）",
     nameEn: "Happily Ever After",
     park: "MK",
