@@ -35,7 +35,7 @@ export const RIDES: readonly Ride[] = [
     lightningLane: "multi",
     singleRider: false,
     inTokyo: false,
-    description: "ボートで光る夜の森を進むゆったりした乗り物。最後のシャーマンの人形の動きが見どころ。",
+    description: "アバターの世界「パンドラ」にある、もう1つのアトラクション。ボートで光る夜の森を進むゆったりした乗り物。最後のシャーマンの人形の動きが見どころ。",
   },
   {
     id: "everest",
