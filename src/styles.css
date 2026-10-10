@@ -686,3 +686,42 @@ h3 {
   text-decoration: none;
   margin-top: 2px;
 }
+
+/* ---------------------------------------------------------------- 条件の絞り込み・まとめて回答 */
+.chip.clear {
+  color: var(--must);
+}
+.count {
+  margin: 2px 0 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.bulk span {
+  flex: 1 1 100%;
+}
+.chips.wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+.bulk {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.bulk span {
+  grid-column: 1 / -1;
+}
+.bulk .mini {
+  padding: 4px 2px;
+  font-size: 0.8rem;
+}

@@ -3,6 +3,8 @@ import { RIDES } from "../data/rides";
 import { VOTE_LABELS, VOTE_ORDER, answeredCount, isComplete, type AllVotes } from "../lib/consensus";
 import { PERSON_LABEL, partnerOf } from "../lib/store";
 import type { PersonId, VoteLevel } from "../types";
+import { matchesFeatures, type FeatureId } from "../lib/filters";
+import { FeatureFilter } from "./FeatureFilter";
 import { KindFilter, type KindFilterValue } from "./KindFilter";
 import { ParkFilter, type ParkFilterValue } from "./ParkFilter";
 import { RideCard } from "./RideCard";
@@ -19,6 +21,7 @@ interface Props {
 export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
   const [park, setPark] = useState<ParkFilterValue>("ALL");
   const [kind, setKind] = useState<KindFilterValue>("ALL");
+  const [features, setFeatures] = useState<Set<FeatureId>>(() => new Set());
   const [onlyUnanswered, setOnlyUnanswered] = useState(false);
   const partner = partnerOf(me);
   const mine = votes[me];
@@ -27,13 +30,20 @@ export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
   const revealed = isComplete(mine, RIDES);
 
   const rides = RIDES.filter(
-    (r) => (park === "ALL" || r.park === park) && (kind === "ALL" || r.kind === kind) && (!onlyUnanswered || mine[r.id] === undefined),
+    (r) =>
+      (park === "ALL" || r.park === park) &&
+      (kind === "ALL" || r.kind === kind) &&
+      matchesFeatures(r, features) &&
+      (!onlyUnanswered || mine[r.id] === undefined),
   );
-  const unanswered = RIDES.filter((r) => mine[r.id] === undefined).map((r) => r.id);
-  const fillRest = (): void => {
+  const filtered = park !== "ALL" || kind !== "ALL" || features.size > 0;
+  // 絞り込み中は「表示中の未回答」、絞り込みなしなら全部の未回答が対象
+  const unanswered = rides.filter((r) => mine[r.id] === undefined).map((r) => r.id);
+  const fillRest = (level: VoteLevel): void => {
     if (unanswered.length === 0) return;
-    if (window.confirm(`まだ答えていない${unanswered.length}件を、まとめて「${VOTE_LABELS.either}」にします。あとから1件ずつ変更できます。よろしいですか？`)) {
-      onBulkVote(unanswered, "either");
+    const scope = filtered ? "表示中の" : "";
+    if (window.confirm(`${scope}まだ答えていない${unanswered.length}件を、まとめて「${VOTE_LABELS[level]}」にします。あとから1件ずつ変更できます。よろしいですか？`)) {
+      onBulkVote(unanswered, level);
     }
   };
 
@@ -51,10 +61,19 @@ export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
       </div>
       <ParkFilter value={park} onChange={setPark} />
       <KindFilter value={kind} onChange={setKind} />
+      <FeatureFilter value={features} onChange={setFeatures} />
+      <p className="count">
+        {rides.length}件を表示{filtered && `（うち未回答${unanswered.length}件）`}
+      </p>
       {unanswered.length > 0 && (
-        <button className="wide" onClick={fillRest}>
-          未回答の{unanswered.length}件をまとめて「{VOTE_LABELS.either}」にする
-        </button>
+        <div className="bulk">
+          <span>{filtered ? "表示中の" : ""}未回答{unanswered.length}件をまとめて：</span>
+          {VOTE_ORDER.map((lv) => (
+            <button key={lv} className={`mini vote-${lv}`} onClick={() => fillRest(lv)}>
+              {VOTE_LABELS[lv]}
+            </button>
+          ))}
+        </div>
       )}
       <label className="toggle">
         <input type="checkbox" checked={onlyUnanswered} onChange={(e) => setOnlyUnanswered(e.target.checked)} />
@@ -81,7 +100,7 @@ export function VoteScreen({ me, votes, onVote, onBulkVote }: Props) {
             </RideCard>
           );
         })}
-        {rides.length === 0 && <p className="empty">この条件で答えていないものはありません。</p>}
+        {rides.length === 0 && <p className="empty">この条件に当てはまるものはありません。</p>}
       </div>
     </section>
   );
