@@ -4,7 +4,7 @@
   --surface: #ffffff;
   --surface-2: #fdeee3;
   --text: #2b2140;
-  --muted: #6e6382;
+  --muted: #574d6b;
   --line: #f0dccb;
   --navy: #2a1b5c;
   --gold: #e3a21a;
@@ -27,8 +27,8 @@
   --shadow: 0 6px 18px rgba(74, 40, 110, 0.1), 0 1px 3px rgba(74, 40, 110, 0.08);
   /* 夕焼け→夜空 */
   --sky: linear-gradient(170deg, #1b1446 0%, #3b2479 38%, #8a3d8f 68%, #ff7a6b 90%, #ffb36b 100%);
-  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
-  --font-display: "Mochiy Pop One", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-display: "Mochiy Pop One", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
   color-scheme: light;
 }
 
@@ -39,7 +39,7 @@
     --surface: #1e1745;
     --surface-2: #2a2158;
     --text: #f6f1ff;
-    --muted: #b9add6;
+    --muted: #cfc5e8;
     --line: #3a2f6e;
     --navy: #0d0a24;
     --gold: #ffcf4d;
@@ -1207,4 +1207,34 @@ button.primary {
 .login-hero h1 {
   font-size: clamp(1.25rem, 6.4vw, 1.8rem);
   white-space: nowrap;
+}
+
+/* ---- 読みやすさ優先: ポップな書体はアプリ名とページ見出しだけ */
+body {
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+h3,
+.card-head h3,
+.rank-group h3,
+.login-box h2 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.card-head h3 {
+  font-size: 1.05rem;
+}
+.desc {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.meta li {
+  font-size: 0.8rem;
+}
+.access,
+.review {
+  font-size: 0.92rem;
+  line-height: 1.7;
 }
