@@ -1648,3 +1648,34 @@ button.glass {
   color: var(--muted);
   background: transparent;
 }
+
+/* ---------------------------------------------------------------- キャラクターダイニング */
+.tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+.card.park-resort {
+  --park: linear-gradient(180deg, #c9a227, #8a3d8f);
+}
+.meta .park-resort { background: #f6ecd2; color: #7a5a00; }
+.meta .reserve-ok { background: #e3f5e9; color: #1d7a45; font-weight: 700; }
+.meta .reserve-other { background: #fff1d6; color: #8a5a00; font-weight: 700; }
+@media (prefers-color-scheme: dark) {
+  .meta .park-resort { background: #4a3c12; color: #f3d98a; }
+  .meta .reserve-ok { background: #173f2c; color: #9fe0b5; }
+  .meta .reserve-other { background: #4a3812; color: #ffd27a; }
+}
+.booking-box {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin: 8px 0 14px;
+  line-height: 1.6;
+}
+.booking-box p {
+  margin: 0 0 8px;
+}
+.booking-title {
+  font-weight: 800;
+  font-size: 1rem;
+}

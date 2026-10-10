@@ -1,0 +1,281 @@
+import type { ParkId } from "../types";
+
+/**
+ * キャラクターダイニング（キャラクターが席を回ってくるレストラン）。
+ * 2026-10-10 に公式サイトのレストラン一覧（「Character Dining」の印があるもの）から作成。
+ * 会えるキャラクターは時期で入れ替わるため、公式サイトの説明と複数の攻略サイトで一致したものを書き、
+ * 食い違いがあるものは caution に残した。予約前に公式アプリで再確認する。
+ */
+
+export type MealPeriod = "breakfast" | "lunch" | "dinner";
+export type DiningStyle = "buffet" | "family" | "set";
+
+export interface CharacterDining {
+  id: string;
+  nameJa: string;
+  nameEn: string;
+  /** パークの中ならパーク、ホテルの中なら "resort" */
+  area: ParkId | "resort";
+  /** 場所（ホテル名やパーク内のエリア） */
+  place: string;
+  /** キャラクターが出てくる食事の時間帯 */
+  meals: readonly MealPeriod[];
+  characters: string;
+  style: DiningStyle;
+  /** 公式サイトの価格帯（大人1人） */
+  price: "$$$" | "$$$$";
+  /** 予約: disney = ディズニーの予約（60日前から）／hotel = ホテル側で予約 */
+  booking: "disney" | "hotel";
+  /** 当日の空き待ちリスト（Walk-up waitlist）に対応しているか */
+  walkUp: boolean;
+  /** パーク内の店は入園チケットが必要 */
+  needsAdmission: boolean;
+  /** ポップセンチュリーからの行き方 */
+  access: string;
+  description: string;
+  officialPath: string;
+  caution?: string;
+}
+
+export const MEAL_LABEL: Record<MealPeriod, string> = { breakfast: "朝食", lunch: "昼食", dinner: "夕食" };
+export const STYLE_LABEL: Record<DiningStyle, string> = {
+  buffet: "ビュッフェ",
+  family: "大皿料理（テーブルに運ばれ、おかわり自由）",
+  set: "コース・セットメニュー",
+};
+export const PRICE_LABEL: Record<CharacterDining["price"], string> = {
+  $$$: "$$$（大人1人 $35〜59.99）",
+  $$$$: "$$$$（大人1人 $60以上）",
+};
+
+export const DINING: readonly CharacterDining[] = [
+  // ---- パークの中
+  {
+    id: "dine-crystal-palace",
+    nameJa: "クリスタル・パレス",
+    nameEn: "The Crystal Palace",
+    area: "MK",
+    place: "マジックキングダム（メインストリートUSAの奥）",
+    meals: ["breakfast", "lunch", "dinner"],
+    characters: "くまのプーさん、ティガー、イーヨー、ピグレット",
+    style: "buffet",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: true,
+    access: "マジックキングダムの中",
+    description: "ガラス張りの温室のような建物で、プーさんと100エーカーの森の仲間がテーブルを回ってくるビュッフェ。",
+    officialPath: "/dining/magic-kingdom/crystal-palace/",
+  },
+  {
+    id: "dine-cinderella-royal-table",
+    nameJa: "シンデレラ・ロイヤルテーブル",
+    nameEn: "Cinderella's Royal Table",
+    area: "MK",
+    place: "マジックキングダム（シンデレラ城の中）",
+    meals: ["lunch", "dinner"],
+    characters: "シンデレラとプリンセスたち（オーロラ姫など。顔ぶれは変わる）",
+    style: "set",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: true,
+    access: "マジックキングダムの中",
+    description: "シンデレラ城の中で食事ができる唯一のレストラン。プリンセスがテーブルに来てくれる。WDWで最も予約が取りにくい店のひとつ。",
+    officialPath: "/dining/magic-kingdom/cinderella-royal-table/",
+  },
+  {
+    id: "dine-akershus",
+    nameJa: "アーケシュフース・ロイヤル・バンケットホール",
+    nameEn: "Akershus Royal Banquet Hall",
+    area: "EP",
+    place: "エプコット（ノルウェー館）",
+    meals: ["breakfast", "lunch", "dinner"],
+    characters: "プリンセスたち（ベル、アリエル、白雪姫など。顔ぶれは変わる）",
+    style: "family",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: false,
+    needsAdmission: true,
+    access: "エプコットの中（ポップセンチュリーからスカイライナーで直行）",
+    description: "中世のお城の大広間で、プリンセスたちと食事ができる。シンデレラ城の店より予約が取りやすいことが多い。",
+    officialPath: "/dining/epcot/akershus-royal-banquet-hall/",
+  },
+  {
+    id: "dine-garden-grill",
+    nameJa: "ガーデン・グリル",
+    nameEn: "The Garden Grill Restaurant",
+    area: "EP",
+    place: "エプコット（ザ・ランド館）",
+    meals: ["breakfast", "lunch", "dinner"],
+    characters: "チップとデール、ミッキー、プルート",
+    style: "family",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: true,
+    access: "エプコットの中（ポップセンチュリーからスカイライナーで直行）",
+    description: "店全体がゆっくり回転し、ボートのアトラクション「リビング・ウィズ・ザ・ランド」の景色を見ながら食べられる。農夫姿のチップとデールが来てくれる。",
+    officialPath: "/dining/epcot/garden-grill-restaurant/",
+    caution: "4人目がプルートかグーフィーかは情報源で食い違いあり",
+  },
+  {
+    id: "dine-hollywood-vine",
+    nameJa: "ハリウッド＆ヴァイン",
+    nameEn: "Hollywood & Vine",
+    area: "HS",
+    place: "ハリウッド・スタジオ（エコー・レイク）",
+    meals: ["breakfast", "lunch", "dinner"],
+    characters: "ミニーと仲間たち（季節ごとの衣装）",
+    style: "buffet",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: true,
+    access: "ハリウッド・スタジオの中（ポップセンチュリーからスカイライナーで直行）",
+    description: "季節ごとにテーマが変わるミニーのパーティー。ミニーと仲間たちがその季節の衣装で出てくるビュッフェ。",
+    officialPath: "/dining/hollywood-studios/hollywood-and-vine/",
+    caution: "5月の時期のテーマと顔ぶれは出発前に公式サイトで確認",
+  },
+  {
+    id: "dine-tusker-house",
+    nameJa: "タスカー・ハウス",
+    nameEn: "Tusker House Restaurant",
+    area: "AK",
+    place: "アニマルキングダム（アフリカ・エリア）",
+    meals: ["breakfast", "lunch", "dinner"],
+    characters: "ドナルド、デイジー、ミッキー、グーフィー（サファリの衣装）",
+    style: "buffet",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: true,
+    access: "アニマルキングダムの中",
+    description: "ドナルドがホストの、アフリカ風の市場のようなビュッフェ。サファリ姿のキャラクターに会える。",
+    officialPath: "/dining/animal-kingdom/tusker-house-restaurant/",
+  },
+  // ---- ホテルの中（入園チケット不要）
+  {
+    id: "dine-topolino",
+    nameJa: "トッポリーノズ・テラス（朝食：ブレックファスト・ア・ラ・アート）",
+    nameEn: "Topolino's Terrace – Breakfast à la Art with Mickey & Friends",
+    area: "resort",
+    place: "ディズニー・リビエラ・リゾート（最上階）",
+    meals: ["breakfast"],
+    characters: "画家のミッキー、ミニー、ドナルド、デイジー（芸術家の衣装）",
+    style: "set",
+    price: "$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "ポップセンチュリーからスカイライナーで2駅（乗り換え1回）。パークに行く前に寄りやすい",
+    description: "ホテル最上階のレストランで、芸術家姿のミッキーたちが回ってくる朝食。夕食はキャラクターなしの高級フレンチ・イタリアン。",
+    officialPath: "/dining/riviera-resort/topolinos-terrace/",
+  },
+  {
+    id: "dine-cape-may",
+    nameJa: "ケープ・メイ・カフェ（朝食）",
+    nameEn: "Cape May Cafe",
+    area: "resort",
+    place: "ディズニー・ビーチクラブ・リゾート",
+    meals: ["breakfast"],
+    characters: "ミニー、ドナルド、デイジー、グーフィーなど（ビーチの衣装）",
+    style: "buffet",
+    price: "$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "エプコットの裏口（インターナショナル・ゲートウェイ）から歩いて行ける",
+    description: "ニューイングランドの海辺がテーマ。キャラクターが出るのは朝食のビュッフェだけで、夕食はキャラクターなしのシーフード・ビュッフェ。",
+    officialPath: "/dining/beach-club-resort/cape-may-cafe/",
+    caution: "顔ぶれ（ミッキーが入るか）は情報源で食い違いあり",
+  },
+  {
+    id: "dine-chef-mickeys",
+    nameJa: "シェフ・ミッキー",
+    nameEn: "Chef Mickey's",
+    area: "resort",
+    place: "ディズニー・コンテンポラリー・リゾート",
+    meals: ["breakfast"],
+    characters: "シェフ姿のミッキー、ミニー、ドナルド、グーフィー、プルート",
+    style: "buffet",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "マジックキングダムから歩くかモノレールですぐ",
+    description: "モノレールが建物の中を通り抜けるホテルの、ミッキーと仲間たち5人がそろうビュッフェ。ミッキーの形のワッフルが名物。",
+    officialPath: "/dining/contemporary-resort/chef-mickeys/",
+    caution: "公式サイトの説明には夕食もあるが、営業時間帯の情報は朝食のみ。夕食の有無は予約時に確認",
+  },
+  {
+    id: "dine-1900-park-fare",
+    nameJa: "1900パーク・フェア",
+    nameEn: "1900 Park Fare",
+    area: "resort",
+    place: "ディズニー・グランドフロリディアン・リゾート＆スパ",
+    meals: ["breakfast", "dinner"],
+    characters: "「願い」がテーマのキャラクター（シンデレラ、ティアナなど。顔ぶれは変わる）",
+    style: "buffet",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "マジックキングダムからモノレールですぐ",
+    description: "最高級ホテルの華やかなレストランで、「願い」をテーマにしたキャラクターと食事ができるビュッフェ。",
+    officialPath: "/dining/grand-floridian-resort-and-spa/1900-park-fare/",
+    caution: "朝食と夕食で顔ぶれが違う。出てくるキャラクターは攻略サイトでも食い違いが大きい",
+  },
+  {
+    id: "dine-ohana",
+    nameJa: "オハナ（朝食：ベスト・フレンズ・ブレックファスト）",
+    nameEn: "'Ohana – Best Friends Breakfast featuring Lilo & Stitch",
+    area: "resort",
+    place: "ディズニー・ポリネシアン・ビレッジ・リゾート",
+    meals: ["breakfast"],
+    characters: "リロとスティッチ（ミッキーとプルートが来ることも）",
+    style: "family",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "マジックキングダムからモノレールかボートですぐ",
+    description: "南の島がテーマのホテルで、リロとスティッチに会える朝食。夕食はキャラクターなしの焼き肉料理。",
+    officialPath: "/dining/polynesian-resort/ohana/",
+  },
+  {
+    id: "dine-artist-point",
+    nameJa: "ストーリーブック・ダイニング（アーティスト・ポイント）",
+    nameEn: "Story Book Dining at Artist Point with Snow White",
+    area: "resort",
+    place: "ディズニー・ウィルダネス・ロッジ",
+    meals: ["dinner"],
+    characters: "白雪姫、ドーピー、グランピー、女王",
+    style: "set",
+    price: "$$$$",
+    booking: "disney",
+    walkUp: true,
+    needsAdmission: false,
+    access: "マジックキングダムからボートで行ける",
+    description: "森の中のロッジで、「白雪姫」の世界がテーマのコースの夕食。悪役の女王にも会える珍しい店。",
+    officialPath: "/dining/wilderness-lodge-resort/artist-point/",
+  },
+  {
+    id: "dine-goofy-four-seasons",
+    nameJa: "グーフィーと仲間たちの朝ごはん（ラヴェッロ）",
+    nameEn: "Good Morning Breakfast with Goofy and His Pals",
+    area: "resort",
+    place: "フォーシーズンズ・リゾート・オーランド（ディズニー直営ではない高級ホテル）",
+    meals: ["breakfast"],
+    characters: "グーフィーと仲間たち",
+    style: "buffet",
+    price: "$$$",
+    booking: "hotel",
+    walkUp: false,
+    needsAdmission: false,
+    access: "車かタクシーが必要（スカイライナー・バスの路線外）",
+    description: "WDWの敷地内にあるフォーシーズンズのイタリアンで、グーフィーたちに会える朝食。実施は週の決まった曜日だけ。",
+    officialPath: "/dining/four-seasons/breakfast-with-goofy-ravello/",
+    caution: "予約・実施曜日はフォーシーズンズ側。公式ページで確認",
+  },
+];

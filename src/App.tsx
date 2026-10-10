@@ -5,6 +5,7 @@ import { Countdown } from "./components/Countdown";
 import { TitleLockup } from "./components/TitleLockup";
 import { ScrollTopButton, scrollToTop } from "./components/ScrollTopButton";
 import { Skyline } from "./components/Skyline";
+import { DiningScreen } from "./components/DiningScreen";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { NewsProvider, useNews } from "./components/NewsContext";
 import { NewsScreen } from "./components/NewsScreen";
@@ -29,12 +30,13 @@ import { createLocalStore } from "./lib/localStore";
 import { PERSON_LABEL, type AuthUser, type Store } from "./lib/store";
 import type { Consensus, PersonId } from "./types";
 
-type Tab = "zukan" | "vote" | "consensus" | "news";
+type Tab = "zukan" | "vote" | "dining" | "consensus" | "news";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "zukan", label: "図鑑", icon: "🏰" },
   { id: "vote", label: "投票", icon: "⭐" },
-  { id: "consensus", label: "合意リスト", icon: "💖" },
+  { id: "dining", label: "食事", icon: "🍽" },
+  { id: "consensus", label: "合意", icon: "💖" },
   { id: "news", label: "ニュース", icon: "📰" },
 ];
 
@@ -172,6 +174,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onGoZukan={(id) => jumpTo("zukan", id)}
           />
         )}
+        {tab === "dining" && <DiningScreen />}
         {tab === "news" && <NewsScreen />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
