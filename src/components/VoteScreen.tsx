@@ -1,16 +1,12 @@
-import { useState } from "react";
 import { RIDES } from "../data/rides";
 import { VOTE_LABELS, VOTE_ORDER, answeredCount, isComplete, type AllVotes } from "../lib/consensus";
 import { PERSON_LABEL, partnerOf } from "../lib/store";
 import type { PersonId, VoteLevel } from "../types";
-import { matchesFeatures, type FeatureId } from "../lib/filters";
-import { FeatureFilter } from "./FeatureFilter";
-import { KindFilter, type KindFilterValue } from "./KindFilter";
-import { ParkFilter, type ParkFilterValue } from "./ParkFilter";
+import { applyFilters, isFiltered } from "../lib/listFilters";
 import { RideCard } from "./RideCard";
 import { useRideFocus, type RideFocus } from "./useRideFocus";
-import { VoteStatusFilter } from "./VoteStatusFilter";
-import { countByStatus, matchesVoteStatus, type VoteStatus } from "../lib/voteFilter";
+import { ListFilterBar } from "./ListFilterBar";
+import { useListFilters } from "./useListFilters";
 
 interface Props {
   me: PersonId;
@@ -24,10 +20,7 @@ interface Props {
 
 /** A2 2人の「乗りたい」投票。相手の回答は、自分が全部答えるまで見えない */
 export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: Props) {
-  const [park, setPark] = useState<ParkFilterValue>("ALL");
-  const [kind, setKind] = useState<KindFilterValue>("ALL");
-  const [features, setFeatures] = useState<Set<FeatureId>>(() => new Set());
-  const [statuses, setStatuses] = useState<Set<VoteStatus>>(() => new Set());
+  const [filters, setFilters] = useListFilters("vote");
   const lit = useRideFocus(focus);
   const partner = partnerOf(me);
   const mine = votes[me];
@@ -35,9 +28,8 @@ export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: 
   const partnerDone = answeredCount(votes[partner], RIDES);
   const revealed = isComplete(mine, RIDES);
 
-  const base = RIDES.filter((r) => (park === "ALL" || r.park === park) && (kind === "ALL" || r.kind === kind) && matchesFeatures(r, features));
-  const rides = base.filter((r) => matchesVoteStatus(mine, r.id, statuses));
-  const filtered = park !== "ALL" || kind !== "ALL" || features.size > 0 || statuses.size > 0;
+  const { base, rides } = applyFilters(RIDES, filters, mine, focus?.rideId);
+  const filtered = isFiltered(filters);
   // 絞り込み中は「表示中の未回答」、絞り込みなしなら全部の未回答が対象
   const unanswered = rides.filter((r) => mine[r.id] === undefined).map((r) => r.id);
   const fillRest = (level: VoteLevel): void => {
@@ -60,10 +52,7 @@ export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: 
             : `相手に引っ張られないよう、${PERSON_LABEL[partner]}の回答は、あなたが全部答えると表示されます。`}
         </p>
       </div>
-      <ParkFilter value={park} onChange={setPark} />
-      <KindFilter value={kind} onChange={setKind} />
-      <FeatureFilter value={features} onChange={setFeatures} />
-      <VoteStatusFilter value={statuses} onChange={setStatuses} counts={countByStatus(mine, base)} />
+      <ListFilterBar filters={filters} onChange={setFilters} base={base} myVotes={mine} />
       <p className="count">
         {rides.length}件を表示{filtered && `（うち未回答${unanswered.length}件）`}
       </p>
