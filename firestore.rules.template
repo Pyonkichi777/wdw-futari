@@ -1,0 +1,23 @@
+rules_version = '2';
+// 「ふたりのWDW」用のセキュリティルール。
+// このファイルはひな形。実際のメールアドレスはリポジトリに書かず、
+// Firebaseコンソール「Firestore Database」→「ルール」に貼るときだけ書き換える。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['TOSHI_GMAIL_ADDRESS', 'WIFE_YAHOO_MAIL_ADDRESS'];
+    }
+    match /profiles/{uid} {
+      allow read, write: if isMember() && request.auth.uid == uid;
+    }
+    match /votes/{person} {
+      allow read: if isMember();
+      allow write: if isMember() && person in ['toshi', 'tsuma'];
+    }
+    match /consensus/{id} {
+      allow read, write: if isMember();
+    }
+  }
+}
