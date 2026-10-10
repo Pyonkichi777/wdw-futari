@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ConsensusScreen } from "./components/ConsensusScreen";
+import { Countdown } from "./components/Countdown";
+import { Skyline } from "./components/Skyline";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { LoginScreen } from "./components/LoginScreen";
 import { VoteScreen } from "./components/VoteScreen";
@@ -23,10 +25,10 @@ import type { Consensus, PersonId } from "./types";
 
 type Tab = "zukan" | "vote" | "consensus";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "zukan", label: "図鑑" },
-  { id: "vote", label: "投票" },
-  { id: "consensus", label: "合意リスト" },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "zukan", label: "図鑑", icon: "🏰" },
+  { id: "vote", label: "投票", icon: "⭐" },
+  { id: "consensus", label: "合意リスト", icon: "💖" },
 ];
 
 const DEMO_PERSON_KEY = "wdw-futari:demo:person";
@@ -114,14 +116,16 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
   return (
     <div className="app">
-      <header className="top">
+      <header className="top sky">
         <div>
           <h1>ぞうたんフロリダ上陸ツアー</h1>
+          <Countdown />
           <p className="sub">{PERSON_LABEL[me]}として使用中</p>
         </div>
         <button className="link" onClick={onSwitch}>
           {switchLabel}
         </button>
+        <Skyline />
       </header>
       {banner && <p className="banner demo">{banner}</p>}
       {error && (
@@ -144,6 +148,9 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       <nav className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? "tab on" : "tab"} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined}>
+            <span className="tab-icon" aria-hidden="true">
+              {t.icon}
+            </span>
             {t.label}
           </button>
         ))}
@@ -154,7 +161,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
 function PersonPicker({ onPick, demo = false }: { onPick: (p: PersonId | null) => void; demo?: boolean }) {
   return (
-    <main className="login">
+    <main className="login sky-page">
       <h1>ぞうたんフロリダ上陸ツアー</h1>
       <p className="lead">{demo ? "お試しモード：どちらとして使いますか？" : "はじめに、あなたはどちらですか？（あとから変更はできません）"}</p>
       <div className="picker">
@@ -171,7 +178,7 @@ function PersonPicker({ onPick, demo = false }: { onPick: (p: PersonId | null) =
 function VerifyEmail({ fb, user, onRefreshed }: { fb: FirebaseBackend; user: AuthUser; onRefreshed: (u: AuthUser | null) => void }) {
   const [msg, setMsg] = useState<string | null>(null);
   return (
-    <main className="login">
+    <main className="login sky-page">
       <h1>確認メールを送りました</h1>
       <p className="lead">
         {user.email} に届いたメールのリンクを押してから、下のボタンを押してください。迷惑メールのフォルダに入っていることがあります。
@@ -205,7 +212,7 @@ function VerifyEmail({ fb, user, onRefreshed }: { fb: FirebaseBackend; user: Aut
 
 function ErrorScreen({ message, onLogout }: { message: string; onLogout: () => void }) {
   return (
-    <main className="login">
+    <main className="login sky-page">
       <h1>ぞうたんフロリダ上陸ツアー</h1>
       <p className="banner warn">{message}</p>
       <button className="link" onClick={onLogout}>
@@ -217,7 +224,7 @@ function ErrorScreen({ message, onLogout }: { message: string; onLogout: () => v
 
 function Splash({ text }: { text: string }) {
   return (
-    <main className="login">
+    <main className="login sky-page">
       <p className="lead">{text}</p>
     </main>
   );

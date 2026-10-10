@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { authErrorMessage } from "../lib/errors";
+import { Countdown } from "./Countdown";
+import { Skyline } from "./Skyline";
 import type { FirebaseBackend } from "../lib/firebaseStore";
 import { loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword } from "../lib/firebaseStore";
 
@@ -31,9 +33,13 @@ export function LoginScreen({ fb }: { fb: FirebaseBackend }) {
   };
 
   return (
-    <main className="login">
-      <h1>ぞうたんフロリダ上陸ツアー</h1>
-      <p className="lead">2027年5月 フロリダ・ディズニーの作戦帳</p>
+    <main className="login sky-page">
+      <div className="login-hero sky">
+        <h1>ぞうたんフロリダ上陸ツアー</h1>
+        <p className="lead">2027年5月 フロリダ・ディズニーの作戦帳</p>
+        <Countdown />
+        <Skyline />
+      </div>
 
       <section className="login-box">
         <h2>Googleアカウントで入る</h2>

@@ -4,8 +4,8 @@
   "start_url": "/wdw-futari/",
   "scope": "/wdw-futari/",
   "display": "standalone",
-  "background_color": "#14213d",
-  "theme_color": "#14213d",
+  "background_color": "#2a1b5c",
+  "theme_color": "#2a1b5c",
   "lang": "ja",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },

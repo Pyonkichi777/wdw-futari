@@ -1,51 +1,63 @@
 :root {
-  --bg: #f6f3ec;
+  /* フロリダの昼：白い砂浜と青い空、夕焼けのコーラル */
+  --bg: #fff7ec;
   --surface: #ffffff;
-  --surface-2: #efeae0;
-  --text: #1b1f2a;
-  --muted: #5d6474;
-  --line: #ddd6c8;
-  --navy: #14213d;
-  --gold: #c9971c;
-  --gold-soft: #f4c95d;
-  --accent: #2f6fb3;
-  --must: #c2410c;
-  --want: #2f6fb3;
-  --either: #6b7280;
-  --skip: #9ca3af;
-  --warn-bg: #fff4e0;
-  --warn-text: #8a4b00;
-  --ok-bg: #e6f4ea;
-  --ok-text: #1e6b35;
-  --S: #c2410c;
-  --A: #2f6fb3;
-  --B: #6b7280;
-  --radius: 14px;
+  --surface-2: #fdeee3;
+  --text: #2b2140;
+  --muted: #6e6382;
+  --line: #f0dccb;
+  --navy: #2a1b5c;
+  --gold: #e3a21a;
+  --gold-soft: #ffd66b;
+  --accent: #1d7fc4;
+  --pink: #ff5d8f;
+  --teal: #17a99b;
+  --must: #ff4f6d;
+  --want: #1d7fc4;
+  --either: #8b7fa3;
+  --skip: #b7aec6;
+  --warn-bg: #fff1dc;
+  --warn-text: #9a4d00;
+  --ok-bg: #e2f7ef;
+  --ok-text: #126b4f;
+  --S: #ff4f6d;
+  --A: #1d7fc4;
+  --B: #8b7fa3;
+  --radius: 18px;
+  --shadow: 0 6px 18px rgba(74, 40, 110, 0.1), 0 1px 3px rgba(74, 40, 110, 0.08);
+  /* 夕焼け→夜空 */
+  --sky: linear-gradient(170deg, #1b1446 0%, #3b2479 38%, #8a3d8f 68%, #ff7a6b 90%, #ffb36b 100%);
+  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  --font-display: "Mochiy Pop One", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1424;
-    --surface: #18203a;
-    --surface-2: #222c4a;
-    --text: #eef0f5;
-    --muted: #a3abc0;
-    --line: #2e3a5c;
-    --navy: #0b1120;
-    --gold: #f4c95d;
-    --accent: #7fb2ec;
-    --must: #fb923c;
-    --want: #7fb2ec;
-    --either: #a3abc0;
-    --skip: #6b7280;
-    --warn-bg: #3a2a10;
+    /* フロリダの夜：花火の上がる星空 */
+    --bg: #120d2b;
+    --surface: #1e1745;
+    --surface-2: #2a2158;
+    --text: #f6f1ff;
+    --muted: #b9add6;
+    --line: #3a2f6e;
+    --navy: #0d0a24;
+    --gold: #ffcf4d;
+    --accent: #7cc4ff;
+    --pink: #ff86ad;
+    --teal: #4fd8c8;
+    --must: #ff6f89;
+    --want: #7cc4ff;
+    --either: #b9add6;
+    --skip: #6f6593;
+    --warn-bg: #3d2a14;
     --warn-text: #ffd59a;
-    --ok-bg: #12331f;
-    --ok-text: #9be3b0;
-    --S: #fb923c;
-    --A: #7fb2ec;
-    --B: #a3abc0;
+    --ok-bg: #0f3a30;
+    --ok-text: #9be8c9;
+    --S: #ff6f89;
+    --A: #7cc4ff;
+    --B: #b9add6;
+    --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
 }
@@ -59,7 +71,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
   font-size: 16px;
   line-height: 1.6;
   -webkit-text-size-adjust: 100%;
@@ -738,4 +751,460 @@ h3 {
 .meta .motion-4 {
   background: var(--must);
   color: #fff;
+}
+
+
+/* ================================================================ テーマ: フロリダの夕焼けと夜空 */
+html,
+body {
+  background:
+    radial-gradient(1200px 500px at 110% -10%, rgba(255, 122, 107, 0.12), transparent 60%),
+    radial-gradient(900px 500px at -20% 30%, rgba(23, 169, 155, 0.08), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+h2 {
+  font-size: 1.3rem;
+  margin: 14px 0 6px;
+}
+button {
+  font-family: var(--font-body);
+  font-weight: 700;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+button.primary {
+  background: linear-gradient(135deg, #ff5d8f, #ff8a5b);
+  border: none;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(255, 93, 143, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  button.primary {
+    background: linear-gradient(135deg, #ffcf4d, #ff8a5b);
+    color: #2a1b5c;
+  }
+}
+
+/* ---- 夜空（ヘッダーとログイン） */
+.sky {
+  position: relative;
+  overflow: hidden;
+  background: var(--sky);
+  color: #fff;
+  isolation: isolate;
+}
+.sky::before,
+.sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+    radial-gradient(1px 1px at 28% 42%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 46% 12%, #fff, transparent),
+    radial-gradient(1px 1px at 63% 30%, #fff, transparent),
+    radial-gradient(2px 2px at 78% 14%, #ffe9a8, transparent),
+    radial-gradient(1px 1px at 88% 38%, #fff, transparent),
+    radial-gradient(1px 1px at 6% 50%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 55% 55%, #fff, transparent);
+  animation: twinkle 3.2s ease-in-out infinite alternate;
+}
+.sky::after {
+  background-image:
+    radial-gradient(1px 1px at 20% 28%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 37% 20%, #ffe9a8, transparent),
+    radial-gradient(1px 1px at 70% 46%, #fff, transparent),
+    radial-gradient(1px 1px at 94% 22%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 15% 62%, #fff, transparent);
+  animation-delay: 1.6s;
+}
+@keyframes twinkle {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 64px;
+  z-index: -1;
+  pointer-events: none;
+}
+.skyline .silhouette {
+  fill: rgba(16, 10, 40, 0.88);
+}
+.skyline .door {
+  fill: #ffcf4d;
+  opacity: 0.85;
+}
+.skyline .fw line {
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.skyline .fw-1 line {
+  stroke: #ffd66b;
+}
+.skyline .fw-2 line {
+  stroke: #ff86ad;
+}
+.skyline .fw {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: burst 2.8s ease-out infinite;
+}
+.skyline .fw-2 {
+  animation-delay: 1.4s;
+}
+@keyframes burst {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+/* ---- ヘッダー */
+.top.sky {
+  padding: calc(14px + env(safe-area-inset-top)) 16px 58px;
+  box-shadow: 0 8px 24px rgba(42, 27, 92, 0.35);
+  border-radius: 0 0 26px 26px;
+}
+.top h1 {
+  color: transparent;
+  background: linear-gradient(100deg, #ffe08a 0%, #fff6d6 35%, #ffc94d 55%, #fff6d6 75%, #ffe08a 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 6s linear infinite;
+  text-shadow: 0 0 18px rgba(255, 214, 107, 0.25);
+}
+@keyframes shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+.countdown {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff3d6;
+}
+.countdown strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6em;
+  color: #ffd66b;
+  margin: 0 3px;
+  text-shadow: 0 0 12px rgba(255, 214, 107, 0.6);
+}
+.top .sub {
+  color: #e9defc;
+}
+.top button.link {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 6px 14px;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+}
+
+/* ---- ログイン画面 */
+.login.sky-page {
+  padding-top: 0;
+}
+.login-hero {
+  margin: 0 -16px;
+  padding: calc(48px + env(safe-area-inset-top)) 20px 80px;
+  border-radius: 0 0 32px 32px;
+  text-align: center;
+}
+.login-hero h1,
+.login h1 {
+  color: #ffe08a;
+}
+.login-hero .lead {
+  color: #f3e9ff;
+}
+.login-hero .countdown {
+  margin-top: 10px;
+}
+.login .login-box {
+  box-shadow: var(--shadow);
+  border: none;
+}
+.login > h1 {
+  color: var(--navy);
+}
+@media (prefers-color-scheme: dark) {
+  .login > h1 {
+    color: var(--gold);
+  }
+}
+
+/* ---- 下のタブ */
+.tabs {
+  margin: 0 10px calc(8px + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px;
+  border: none;
+  border-radius: 22px;
+  background: rgba(42, 27, 92, 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(42, 27, 92, 0.35);
+}
+.tab {
+  color: #cfc3ee;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px;
+  font-size: 0.8rem;
+}
+.tab-icon {
+  font-size: 1.25rem;
+  line-height: 1.1;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tab.on {
+  color: #2a1b5c;
+  background: linear-gradient(135deg, #ffe08a, #ffb36b);
+  box-shadow: none;
+}
+.tab.on .tab-icon {
+  transform: translateY(-2px) scale(1.15);
+}
+.app {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+/* ---- カード：パークごとのリボン */
+.card {
+  position: relative;
+  border: none;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  padding-left: 18px;
+  animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--park, var(--gold));
+}
+.card.park-MK {
+  --park: linear-gradient(180deg, #4f8cff, #ff86ad);
+}
+.card.park-EP {
+  --park: linear-gradient(180deg, #8e6bff, #17a99b);
+}
+.card.park-HS {
+  --park: linear-gradient(180deg, #ff4f6d, #ffb36b);
+}
+.card.park-AK {
+  --park: linear-gradient(180deg, #2fa35a, #e3a21a);
+}
+.list .card:nth-child(1) { animation-delay: 0.02s; }
+.list .card:nth-child(2) { animation-delay: 0.06s; }
+.list .card:nth-child(3) { animation-delay: 0.1s; }
+.list .card:nth-child(4) { animation-delay: 0.14s; }
+.list .card:nth-child(5) { animation-delay: 0.18s; }
+.list .card:nth-child(6) { animation-delay: 0.22s; }
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card-head h3 {
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+.meta .park-MK { background: #e7efff; color: #2f5fcf; }
+.meta .park-EP { background: #efe9ff; color: #6a4bd6; }
+.meta .park-HS { background: #ffe8ec; color: #d23356; }
+.meta .park-AK { background: #e6f6ea; color: #23804a; }
+@media (prefers-color-scheme: dark) {
+  .meta .park-MK { background: #22306a; color: #a9c6ff; }
+  .meta .park-EP { background: #2f2566; color: #c9b8ff; }
+  .meta .park-HS { background: #4a1f36; color: #ffb3c4; }
+  .meta .park-AK { background: #173f2c; color: #9fe0b5; }
+}
+
+/* ---- TOP10 は金色のチケット */
+.top10 {
+  position: relative;
+  background: linear-gradient(135deg, #ffe08a, #e3a21a);
+  color: #4a2a00;
+  border-radius: 6px;
+  padding: 4px 9px;
+  box-shadow: 0 2px 6px rgba(227, 162, 26, 0.45);
+  -webkit-mask: radial-gradient(circle 4px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 4px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 4px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 4px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+}
+
+/* ---- 絞り込みのチップ */
+.chip {
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+}
+.chip.on {
+  background: linear-gradient(135deg, #3b2479, #8a3d8f);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 10px rgba(59, 36, 121, 0.3);
+}
+@media (prefers-color-scheme: dark) {
+  .chip.on {
+    background: linear-gradient(135deg, #ffcf4d, #ff8a5b);
+    color: #2a1b5c;
+  }
+}
+
+/* ---- 投票ボタン：押すとキラッ */
+.vote {
+  border-radius: 12px;
+  position: relative;
+}
+.vote.on {
+  animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.vote.on.vote-must {
+  background: linear-gradient(135deg, #ff4f6d, #ff8a5b);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(255, 79, 109, 0.4);
+}
+.vote.on.vote-must::after {
+  content: "✨";
+  position: absolute;
+  top: -10px;
+  right: -4px;
+  font-size: 0.9rem;
+  animation: sparkle 0.6s ease-out;
+}
+.vote.on.vote-want {
+  background: linear-gradient(135deg, #1d7fc4, #4fc3e8);
+  border-color: transparent;
+}
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes sparkle {
+  from { transform: scale(0) rotate(-30deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ---- 進み具合 */
+.progress-box {
+  border: none;
+  box-shadow: var(--shadow);
+}
+.progress progress {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.progress progress::-webkit-progress-bar {
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+.progress progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #ff5d8f, #ffb36b, #ffd66b);
+  border-radius: 999px;
+}
+.progress progress::-moz-progress-bar {
+  background: linear-gradient(90deg, #ff5d8f, #ffb36b, #ffd66b);
+}
+
+/* ---- 合意リスト */
+.rank-item {
+  border: none;
+  box-shadow: var(--shadow);
+}
+.rank-S .order {
+  background: linear-gradient(135deg, #ff4f6d, #ff8a5b);
+}
+.rank-group h3 {
+  border-left-width: 6px;
+}
+
+/* ---- 口コミ・説明の箱 */
+.access {
+  background: var(--surface-2);
+  border-radius: 14px;
+}
+.review {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+}
+.verdict-絶賛 {
+  background: linear-gradient(135deg, #ffe08a, #e3a21a);
+  color: #4a2a00;
+}
+
+/* ---- 動きを減らす設定の人には、アニメーションを止める */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .sky::before,
+  .sky::after,
+  .skyline .fw,
+  .top h1 {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.login-hero h1 {
+  font-size: clamp(1.25rem, 6.4vw, 1.8rem);
+  white-space: nowrap;
 }

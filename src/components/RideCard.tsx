@@ -102,9 +102,9 @@ export function ReviewBox({ ride }: { ride: Ride }) {
 
 export function RideCard({ ride, children, detail = false }: { ride: Ride; children?: ReactNode; detail?: boolean }) {
   return (
-    <article className="card">
+    <article className={`card park-${ride.park}`}>
       <header className="card-head">
-        {ride.top10 !== undefined && <span className="top10">TOP{ride.top10}</span>}
+        {ride.top10 !== undefined && <span className="top10">★TOP{ride.top10}</span>}
         <div>
           <h3>{ride.nameJa}</h3>
           <p className="en">{ride.nameEn}</p>
