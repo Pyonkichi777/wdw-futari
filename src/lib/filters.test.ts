@@ -26,6 +26,11 @@ describe("絞り込み", () => {
     expect(pick("review45")).not.toContain("navi-river");
   });
 
+  it("酔いにくい: フライト・オブ・パッセージは入らず、キリマンジャロ・サファリは入る", () => {
+    expect(pick("lowMotion")).not.toContain("flight-of-passage");
+    expect(pick("lowMotion")).toContain("kilimanjaro");
+  });
+
   it("toggle で付け外しできる", () => {
     const a = toggle(new Set<FeatureId>(), "top10");
     expect(a.has("top10")).toBe(true);

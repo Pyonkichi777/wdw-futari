@@ -1,9 +1,10 @@
 import { REVIEWS } from "../data/reviews";
 import type { Ride } from "../types";
+import { motionOf } from "./motion";
 import { scoreOf } from "./reviewScore";
 
 /** 絞り込みの条件（複数選んだら「すべて満たすもの」） */
-export type FeatureId = "top10" | "single" | "tier1" | "early" | "review45" | "notTokyo" | "singleRider" | "gentle";
+export type FeatureId = "top10" | "single" | "tier1" | "early" | "review45" | "notTokyo" | "singleRider" | "gentle" | "lowMotion";
 
 export const FEATURES: readonly { id: FeatureId; label: string; test: (r: Ride) => boolean }[] = [
   { id: "top10", label: "TOP10", test: (r) => r.top10 !== undefined },
@@ -14,6 +15,7 @@ export const FEATURES: readonly { id: FeatureId; label: string; test: (r: Ride) 
   { id: "notTokyo", label: "東京にない", test: (r) => !r.inTokyo },
   { id: "singleRider", label: "1人乗り専用の列", test: (r) => r.singleRider },
   { id: "gentle", label: "負担が弱い", test: (r) => r.intensity === "弱い" },
+  { id: "lowMotion", label: "酔いにくい（酔い度0〜1）", test: (r) => motionOf(r).level <= 1 },
 ];
 
 export function matchesFeatures(ride: Ride, selected: ReadonlySet<FeatureId>): boolean {

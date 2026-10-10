@@ -1,4 +1,5 @@
 import type { Ride, RideKind } from "../types";
+import { MOTION_LABEL, motionDots, motionOf } from "./motion";
 
 export const KIND_LABEL: Record<RideKind, string> = {
   ride: "乗り物",
@@ -48,6 +49,13 @@ export function accessLines(ride: Ride): AccessLine[] {
       strong: ride.earlyEntry,
     });
   }
+  const m = motionOf(ride);
+  const basis = m.source === "allears" ? `All Ears: ${m.allEars ?? ""}` : "乗り物の動きと口コミから推定";
+  lines.push({
+    label: "酔い度",
+    value: `${motionDots(m.level)} ${MOTION_LABEL[m.level]}（${basis}）${m.note ? `。${m.note}` : ""}`,
+    strong: m.level >= 3,
+  });
   if (ride.singleRider) lines.push({ label: "1人乗り専用の列", value: "あり（夫婦で別々の回に乗る代わりに早く乗れる）" });
   return lines;
 }

@@ -3,6 +3,7 @@ import { parkName } from "../data/parks";
 import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
+import { MOTION_LABEL, motionDots, motionOf } from "../lib/motion";
 import { scoreOf } from "../lib/reviewScore";
 import type { Ride } from "../types";
 
@@ -19,6 +20,7 @@ export function RideMeta({ ride }: { ride: Ride }) {
       <li>{KIND_LABEL[ride.kind]}</li>
       <li className={`intensity intensity-${ride.intensity}`}>負担: {ride.intensity}</li>
       <li>{ride.minHeightCm ? `身長${ride.minHeightCm}cm以上` : "身長制限なし"}</li>
+      <MotionChip ride={ride} />
       <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>
       {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
       {ride.kind === "ride" && ride.earlyEntry && <li className="accent">開園前入園OK</li>}
@@ -28,7 +30,7 @@ export function RideMeta({ ride }: { ride: Ride }) {
       {ride.tags
         .filter((t) => t !== "ショー")
         .map((t) => (
-          <li key={t}>{t}</li>
+          <li key={t}>{t === "3D・酔いやすい" ? "映像・3D" : t}</li>
         ))}
     </ul>
   );
@@ -45,6 +47,16 @@ export function AccessBox({ ride }: { ride: Ride }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function MotionChip({ ride }: { ride: Ride }) {
+  const m = motionOf(ride);
+  if (ride.kind !== "ride" && m.level === 0) return null;
+  return (
+    <li className={`motion motion-${m.level}`}>
+      酔い度 {motionDots(m.level)} {MOTION_LABEL[m.level]}
+    </li>
   );
 }
 

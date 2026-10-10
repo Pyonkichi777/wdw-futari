@@ -725,3 +725,17 @@ h3 {
   padding: 4px 2px;
   font-size: 0.8rem;
 }
+
+/* ---------------------------------------------------------------- 酔い度 */
+.meta .motion {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.meta .motion-3 {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.meta .motion-4 {
+  background: var(--must);
+  color: #fff;
+}

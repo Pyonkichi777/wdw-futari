@@ -81,3 +81,15 @@ export interface Review {
   /** 注意書き（旧版の評価など） */
   note?: string;
 }
+
+/** 酔い度 0=なし 1=低 2=中 3=高 4=最高（目安） */
+export type MotionLevel = 0 | 1 | 2 | 3 | 4;
+
+export interface Motion {
+  level: MotionLevel;
+  /** allears = All Ears の評価を換算 / estimate = 乗り物の動きと口コミから推定 */
+  source: "allears" | "estimate";
+  /** All Ears の評価の原文（Low / Medium / High / EXTREME など） */
+  allEars?: string;
+  note?: string;
+}
