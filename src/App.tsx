@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ConsensusScreen } from "./components/ConsensusScreen";
+import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
 import { Skyline } from "./components/Skyline";
 import { Encyclopedia } from "./components/Encyclopedia";
@@ -111,13 +112,18 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
 
   useEffect(() => store.subscribeVotes(setVotes), [store]);
   useEffect(() => store.subscribeConsensus(setConsensus), [store]);
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
   const report = (e: unknown): void => setError(authErrorMessage(e));
 
   return (
     <div className="app">
-      <header className="top sky">
-        <div>
+      <header
+        className={photo ? "top sky has-photo" : "top sky"}
+        style={photo ? { backgroundImage: `linear-gradient(160deg, rgba(20, 12, 50, 0.85) 0%, rgba(20, 12, 50, 0.55) 40%, rgba(20, 12, 50, 0.1) 72%), url(${photo})` } : undefined}
+      >
+        <div className="top-text">
           <h1>ぞうたんフロリダ上陸ツアー</h1>
           <Countdown />
           <p className="sub">{PERSON_LABEL[me]}として使用中</p>
@@ -125,7 +131,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         <button className="link" onClick={onSwitch}>
           {switchLabel}
         </button>
-        <Skyline />
+        {!photo && <Skyline />}
+        <BannerButton hasPhoto={photo !== null} onSave={(d) => store.saveBanner(d).catch(report)} />
       </header>
       {banner && <p className="banner demo">{banner}</p>}
       {error && (

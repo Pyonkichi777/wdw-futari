@@ -10,6 +10,9 @@ export interface Store {
   setVotes(person: PersonId, rideIds: readonly string[], level: VoteLevel): Promise<void>;
   subscribeConsensus(cb: (c: Consensus) => void): Unsubscribe;
   saveConsensus(c: Consensus): Promise<void>;
+  /** バナー写真（JPEGのdata URL）。2人だけが見られる場所に保存する。null は未設定 */
+  subscribeBanner(cb: (dataUrl: string | null) => void): Unsubscribe;
+  saveBanner(dataUrl: string | null): Promise<void>;
 }
 
 export interface AuthUser {

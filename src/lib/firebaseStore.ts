@@ -14,6 +14,7 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  deleteDoc,
   doc,
   getDoc,
   initializeFirestore,
@@ -142,6 +143,22 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     },
     async saveConsensus(c) {
       await setDoc(doc(fb.db, "consensus", "main"), c);
+    },
+    subscribeBanner(cb) {
+      return onSnapshot(
+        doc(fb.db, "assets", "banner"),
+        (snap) => {
+          const v: unknown = snap.data()?.dataUrl;
+          cb(typeof v === "string" && v.startsWith("data:image/") ? v : null);
+        },
+        // ルール未設定などで読めないときは、写真なし（夜空）で表示する
+        () => cb(null),
+      );
+    },
+    async saveBanner(dataUrl) {
+      const ref = doc(fb.db, "assets", "banner");
+      if (dataUrl === null) await deleteDoc(ref);
+      else await setDoc(ref, { dataUrl, updatedAt: Date.now() });
     },
   };
 }

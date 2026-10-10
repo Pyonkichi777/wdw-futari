@@ -607,7 +607,7 @@ h3 {
   align-items: center;
   row-gap: 2px;
 }
-.top > div {
+.top > .top-text {
   display: contents;
 }
 .top h1 {
@@ -1271,4 +1271,51 @@ h3,
   100% {
     opacity: 0;
   }
+}
+
+/* ---- バナー写真（2人だけが見られる場所に保存した写真を背景に） */
+.top.sky.has-photo {
+  background-size: cover;
+  background-position: center 80%;
+  min-height: 300px;
+  align-content: start;
+}
+.top.sky.has-photo::before,
+.top.sky.has-photo::after {
+  display: none;
+}
+.top.has-photo h1,
+.top.has-photo .countdown,
+.top.has-photo .sub {
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.banner-btns {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+button.glass {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+.banner-err {
+  position: absolute;
+  right: 0;
+  bottom: 40px;
+  width: 260px;
+  text-align: right;
+  font-size: 0.78rem;
+  color: #ffd59a;
 }

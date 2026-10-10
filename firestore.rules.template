@@ -19,5 +19,10 @@ service cloud.firestore {
     match /consensus/{id} {
       allow read, write: if isMember();
     }
+    match /assets/{id} {
+      allow read, delete: if isMember();
+      allow write: if isMember() && request.resource.data.dataUrl is string
+        && request.resource.data.dataUrl.size() < 800000;
+    }
   }
 }

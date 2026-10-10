@@ -4,6 +4,7 @@ import type { Store, Unsubscribe } from "./store";
 
 const VOTES_KEY = "wdw-futari:demo:votes";
 const CONSENSUS_KEY = "wdw-futari:demo:consensus";
+const BANNER_KEY = "wdw-futari:demo:banner";
 
 function read<T>(key: string, fallback: () => T): T {
   try {
@@ -28,6 +29,8 @@ export function createLocalStore(): Store {
   let consensus: Consensus = read(CONSENSUS_KEY, emptyConsensus);
   const voteListeners = new Set<(v: AllVotes) => void>();
   const consensusListeners = new Set<(c: Consensus) => void>();
+  let banner: string | null = read<string | null>(BANNER_KEY, () => null);
+  const bannerListeners = new Set<(b: string | null) => void>();
 
   const listen = <T>(set: Set<(v: T) => void>, cb: (v: T) => void, current: T): Unsubscribe => {
     set.add(cb);
@@ -54,6 +57,12 @@ export function createLocalStore(): Store {
       consensus = c;
       write(CONSENSUS_KEY, consensus);
       consensusListeners.forEach((l) => l(consensus));
+    },
+    subscribeBanner: (cb) => listen(bannerListeners, cb, banner),
+    async saveBanner(dataUrl: string | null) {
+      banner = dataUrl;
+      write(BANNER_KEY, banner);
+      bannerListeners.forEach((l) => l(banner));
     },
   };
 }
