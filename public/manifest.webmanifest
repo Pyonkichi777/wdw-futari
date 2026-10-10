@@ -1,6 +1,6 @@
 {
-  "name": "ふたりのWDW",
-  "short_name": "ふたりのWDW",
+  "name": "どばどばWDWツアー",
+  "short_name": "どばどばWDWツアー",
   "start_url": "/wdw-futari/",
   "scope": "/wdw-futari/",
   "display": "standalone",
