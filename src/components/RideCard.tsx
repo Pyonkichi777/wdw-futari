@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { parkName } from "../data/parks";
+import { rideLinks } from "../lib/links";
 import type { Ride } from "../types";
 
 const LL_LABEL: Record<Ride["lightningLane"], string> = {
@@ -41,7 +42,20 @@ export function RideCard({ ride, children, detail = false }: { ride: Ride; child
         </>
       )}
       {ride.caution && <p className="caution">⚠ {ride.caution}</p>}
+      <RideLinks ride={ride} />
       {children}
     </article>
+  );
+}
+
+export function RideLinks({ ride }: { ride: Ride }) {
+  return (
+    <div className="ride-links" aria-label={`${ride.nameJa}を詳しく見る`}>
+      {rideLinks(ride).map((l) => (
+        <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+          {l.label} ↗
+        </a>
+      ))}
+    </div>
   );
 }
