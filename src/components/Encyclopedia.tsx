@@ -8,6 +8,8 @@ import { VOTE_LABELS } from "../lib/consensus";
 import type { Votes } from "../types";
 import { RideCard } from "./RideCard";
 import { useRideFocus, type RideFocus } from "./useRideFocus";
+import { VoteStatusFilter } from "./VoteStatusFilter";
+import { countByStatus, matchesVoteStatus, type VoteStatus } from "../lib/voteFilter";
 
 interface Props {
   /** 自分の投票（リンクの文言に今の回答を出す） */
@@ -21,8 +23,10 @@ export function Encyclopedia({ myVotes, focus, onGoVote }: Props) {
   const [park, setPark] = useState<ParkFilterValue>("ALL");
   const [kind, setKind] = useState<KindFilterValue>("ALL");
   const [features, setFeatures] = useState<Set<FeatureId>>(() => new Set());
+  const [statuses, setStatuses] = useState<Set<VoteStatus>>(() => new Set());
   const lit = useRideFocus(focus);
-  const rides = RIDES.filter((r) => (park === "ALL" || r.park === park) && (kind === "ALL" || r.kind === kind) && matchesFeatures(r, features));
+  const base = RIDES.filter((r) => (park === "ALL" || r.park === park) && (kind === "ALL" || r.kind === kind) && matchesFeatures(r, features));
+  const rides = base.filter((r) => matchesVoteStatus(myVotes, r.id, statuses));
   return (
     <section>
       <h2>アトラクション図鑑</h2>
@@ -32,6 +36,7 @@ export function Encyclopedia({ myVotes, focus, onGoVote }: Props) {
       <ParkFilter value={park} onChange={setPark} />
       <KindFilter value={kind} onChange={setKind} />
       <FeatureFilter value={features} onChange={setFeatures} />
+      <VoteStatusFilter value={statuses} onChange={setStatuses} counts={countByStatus(myVotes, base)} />
       <p className="count">{rides.length}件を表示</p>
       <div className="list">
         {rides.map((r) => {

@@ -1505,3 +1505,50 @@ button.glass {
     box-shadow: var(--shadow);
   }
 }
+
+/* ---- 自分の回答で絞り込む */
+.vote-status {
+  margin: 4px 0 6px;
+}
+.vote-status-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.chip.vs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vs-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--vs);
+}
+.vs-must { --vs: #ff4f6d; }
+.vs-want { --vs: #1d7fc4; }
+.vs-either { --vs: #9a8fb8; }
+.vs-skip { --vs: #6b6b6b; }
+.vs-none { --vs: transparent; }
+.vs-none .vs-dot {
+  border: 1.5px dashed currentColor;
+}
+.chip.vs.on .vs-dot {
+  box-shadow: 0 0 0 2px #fff;
+}
+.vs-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.15);
+  text-align: center;
+}
+.chip.vs.on .vs-num {
+  background: rgba(255, 255, 255, 0.25);
+}
