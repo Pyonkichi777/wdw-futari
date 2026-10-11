@@ -1,4 +1,5 @@
 import type { GreetStyle, Ride, RideKind } from "../types";
+import { diningLines } from "./dining";
 import { MOTION_LABEL, motionDots, motionOf } from "./motion";
 
 export const KIND_LABEL: Record<RideKind, string> = {
@@ -8,6 +9,7 @@ export const KIND_LABEL: Record<RideKind, string> = {
   night: "夜のショー",
   walk: "散策",
   greet: "グリーティング",
+  dining: "レストラン",
 };
 
 const GREET_STYLE_LABEL: Record<GreetStyle, string> = {
@@ -28,6 +30,8 @@ export function accessLines(ride: Ride): AccessLine[] {
   const lines: AccessLine[] = [
     { label: "入園チケット", value: "購入済みの5日間パークホッパー券で利用できる（追加料金なし）" },
   ];
+
+  if (ride.dining) return diningLines(ride);
 
   if (ride.greet) {
     lines.push(

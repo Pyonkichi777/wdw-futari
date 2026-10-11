@@ -1,10 +1,12 @@
-import type { Consensus, PersonId, VoteLevel } from "../types";
+import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
+import { emptyMeals, type AllMeals } from "./meals";
 import type { Store, Unsubscribe } from "./store";
 
 const VOTES_KEY = "wdw-futari:demo:votes";
 const CONSENSUS_KEY = "wdw-futari:demo:consensus";
 const BANNER_KEY = "wdw-futari:demo:banner";
+const MEALS_KEY = "wdw-futari:demo:meals";
 
 function read<T>(key: string, fallback: () => T): T {
   try {
@@ -29,6 +31,8 @@ export function createLocalStore(): Store {
   let consensus: Consensus = read(CONSENSUS_KEY, emptyConsensus);
   const voteListeners = new Set<(v: AllVotes) => void>();
   const consensusListeners = new Set<(c: Consensus) => void>();
+  let meals: AllMeals = read(MEALS_KEY, emptyMeals);
+  const mealListeners = new Set<(m: AllMeals) => void>();
   let banner: string | null = read<string | null>(BANNER_KEY, () => null);
   const bannerListeners = new Set<(b: string | null) => void>();
 
@@ -51,6 +55,12 @@ export function createLocalStore(): Store {
       votes = { ...votes, [person]: next };
       write(VOTES_KEY, votes);
       voteListeners.forEach((l) => l(votes));
+    },
+    subscribeMeals: (cb) => listen(mealListeners, cb, meals),
+    async setMeals(person: PersonId, rideId: string, list: readonly MealPeriod[]) {
+      meals = { ...meals, [person]: { ...meals[person], [rideId]: [...list] } };
+      write(MEALS_KEY, meals);
+      mealListeners.forEach((l) => l(meals));
     },
     subscribeConsensus: (cb) => listen(consensusListeners, cb, consensus),
     async saveConsensus(c: Consensus) {

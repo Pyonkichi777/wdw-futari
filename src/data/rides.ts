@@ -1,3 +1,4 @@
+import { DINING } from "./dining";
 import { GREETINGS } from "./greetings";
 import type { Ride } from "../types";
 
@@ -1519,7 +1520,7 @@ const BASE_RIDES: readonly Ride[] = [
   },
 ];
 
-/** 図鑑・投票の対象すべて（アトラクション＋グリーティング） */
-export const RIDES: readonly Ride[] = [...BASE_RIDES, ...GREETINGS];
+/** 図鑑・投票の対象すべて（アトラクション＋グリーティング＋キャラクターダイニング） */
+export const RIDES: readonly Ride[] = [...BASE_RIDES, ...GREETINGS, ...DINING];
 
 export const rideById = (id: string): Ride | undefined => RIDES.find((r) => r.id === id);

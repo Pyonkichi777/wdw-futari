@@ -15,7 +15,7 @@ describe("アトラクションのリンク", () => {
   it("公式サイトは公式ドメインの直接リンク", () => {
     for (const r of RIDES) {
       const official = rideLinks(r).find((l) => l.label === "公式サイト");
-      expect(official?.url).toMatch(/^https:\/\/disneyworld\.disney\.go\.com\/(attractions|entertainment)\/[a-z-]+\/[a-z0-9-]+\/$/);
+      expect(official?.url).toMatch(/^https:\/\/disneyworld\.disney\.go\.com\/(attractions|entertainment|dining)\/[a-z-]+\/[a-z0-9-]+\/$/);
     }
   });
 

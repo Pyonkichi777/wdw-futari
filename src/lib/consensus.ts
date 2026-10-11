@@ -1,4 +1,5 @@
-import type { Consensus, ConsensusItem, PersonId, Rank, Ride, VoteLevel, Votes } from "../types";
+import type { Consensus, ConsensusItem, MealPeriod, PersonId, Rank, Ride, VoteLevel, Votes } from "../types";
+import { suggestMeal, type AllMeals } from "./meals";
 
 /** S（何があっても乗る）の上限。全部Sにすると全部が中途半端になるため */
 export const MAX_S = 6;
@@ -11,6 +12,17 @@ export const VOTE_LABELS: Record<VoteLevel, string> = {
 };
 
 export const VOTE_ORDER: readonly VoteLevel[] = ["must", "want", "either", "skip"];
+
+/** レストランは「乗る」ではなく「行く」で聞く */
+const DINING_LABELS: Record<VoteLevel, string> = {
+  must: "絶対行く",
+  want: "行きたい",
+  either: "どちらでも",
+  skip: "行かない",
+};
+
+/** そのアトラクション（レストラン）に合った投票の言葉 */
+export const voteLabel = (ride: Pick<Ride, "kind">, level: VoteLevel): string => (ride.kind === "dining" ? DINING_LABELS : VOTE_LABELS)[level];
 
 const SCORE: Record<VoteLevel, number> = { must: 3, want: 2, either: 1, skip: 0 };
 
@@ -70,9 +82,19 @@ export function buildCandidates(rides: readonly Ride[], all: AllVotes): Candidat
   return list;
 }
 
+/** 合意リストの1行を作る。レストランは2人の希望からおすすめの時間帯も入れる */
+export function toItem(ride: Ride, rank: Rank, meals?: AllMeals): ConsensusItem {
+  const meal = meals ? suggestMeal(ride, meals)?.meal : undefined;
+  return meal ? { rideId: ride.id, rank, meal } : { rideId: ride.id, rank };
+}
+
 /** 候補のおすすめどおりに合意リストを作る */
-export const suggestedConsensus = (candidates: readonly Candidate[]): ConsensusItem[] =>
-  candidates.map((c) => ({ rideId: c.ride.id, rank: c.suggested }));
+export const suggestedConsensus = (candidates: readonly Candidate[], meals?: AllMeals): ConsensusItem[] =>
+  candidates.map((c) => toItem(c.ride, c.suggested, meals));
+
+/** レストランの時間帯を決める */
+export const setMeal = (items: readonly ConsensusItem[], rideId: string, meal: MealPeriod): ConsensusItem[] =>
+  items.map((it) => (it.rideId === rideId ? { ...it, meal } : it));
 
 const RANK_ORDER: Record<Rank, number> = { S: 0, A: 1, B: 2 };
 

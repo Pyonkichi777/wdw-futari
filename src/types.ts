@@ -6,7 +6,30 @@ export type LightningLane = "single" | "multi" | "none";
 export type Intensity = "弱い" | "中" | "強い";
 
 /** 種類: 乗り物・ショー・パレード・夜のショー・散策・グリーティング */
-export type RideKind = "ride" | "show" | "parade" | "night" | "walk" | "greet";
+export type RideKind = "ride" | "show" | "parade" | "night" | "walk" | "greet" | "dining";
+
+/** 食事の時間帯 */
+export type MealPeriod = "breakfast" | "lunch" | "dinner";
+
+/** キャラクターダイニングの詳細（kind が "dining" のときだけ） */
+export interface DiningInfo {
+  /** パークの中の店か（false = ホテルの中。park はそのホテルから行きやすいパーク＝計画上のエリア） */
+  inPark: boolean;
+  /** 場所（ホテル名やパーク内のエリア） */
+  place: string;
+  /** キャラクターが出てくる食事の時間帯 */
+  meals: readonly MealPeriod[];
+  characters: string;
+  style: "buffet" | "family" | "set";
+  /** 公式サイトの価格帯（大人1人） */
+  price: "$$$" | "$$$$";
+  /** 予約: disney = ディズニーの予約（60日前から）／hotel = ホテル側で予約 */
+  booking: "disney" | "hotel";
+  /** 当日の空き待ちリスト（Walk-up List）に対応しているか */
+  walkUp: boolean;
+  /** ポップセンチュリーからの行き方 */
+  access: string;
+}
 
 /** グリーティングの会い方: always = 決まった時間帯ずっと／timed = 時刻を決めて登場／roaming = 歩き回っている */
 export type GreetStyle = "always" | "timed" | "roaming";
@@ -43,6 +66,8 @@ export interface Ride {
   caution?: string;
   /** グリーティングのときだけ: 会えるキャラクターと会い方 */
   greet?: { characters: string; style: GreetStyle };
+  /** キャラクターダイニングのときだけ */
+  dining?: DiningInfo;
 }
 
 export interface Park {
@@ -58,11 +83,16 @@ export type VoteLevel = "must" | "want" | "either" | "skip";
 
 export type Votes = Partial<Record<string, VoteLevel>>;
 
+/** レストランに「行くならいつ」の希望（複数可）。キーはレストランのid */
+export type MealPrefs = Partial<Record<string, readonly MealPeriod[]>>;
+
 export type Rank = "S" | "A" | "B";
 
 export interface ConsensusItem {
   rideId: string;
   rank: Rank;
+  /** レストランのとき: 2人で決めた食事の時間帯（日ごとの計画で使う） */
+  meal?: MealPeriod;
 }
 
 export interface Consensus {

@@ -8,11 +8,11 @@ const valueOf = (id: string, label: string): string | undefined => {
 };
 
 describe("チケット・パスの説明", () => {
-  it("全件に入園チケットと時短パスの行がある", () => {
+  it("全件に入園チケットの行があり、レストランは予約、それ以外は時短パスの行がある", () => {
     for (const r of RIDES) {
       const labels = accessLines(r).map((l) => l.label);
       expect(labels).toContain("入園チケット");
-      expect(labels).toContain("時短パス");
+      expect(labels).toContain(r.kind === "dining" ? "予約" : "時短パス");
     }
   });
 

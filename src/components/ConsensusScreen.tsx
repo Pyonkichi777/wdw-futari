@@ -2,37 +2,44 @@ import { parkName } from "../data/parks";
 import { RIDES, rideById } from "../data/rides";
 import {
   MAX_S,
-  VOTE_LABELS,
   answeredCount,
   buildCandidates,
   countRank,
   isComplete,
   move,
   removeItem,
+  setMeal,
   setRank,
   sortByRank,
   suggestedConsensus,
+  toItem,
+  voteLabel,
   warnings,
   type AllVotes,
 } from "../lib/consensus";
+import { MEAL_LABEL } from "../data/dining";
+import { diningPlace } from "../lib/dining";
+import { suggestMeal, type AllMeals } from "../lib/meals";
+import { mealText } from "./MealPicker";
 import { PERSON_LABEL } from "../lib/store";
-import type { Consensus, ConsensusItem, PersonId, Rank } from "../types";
+import type { Consensus, ConsensusItem, PersonId, Rank, Ride } from "../types";
 
 interface Props {
   me: PersonId;
   votes: AllVotes;
+  meals: AllMeals;
   consensus: Consensus;
   onSave: (c: Consensus) => void;
 }
 
 const RANK_INFO: Record<Rank, { title: string; hint: string }> = {
-  S: { title: "S 何があっても乗る", hint: `朝イチか優先パスで必ず確保する（${MAX_S}本まで）` },
+  S: { title: "S 何があっても乗る・行く", hint: `朝イチか優先パス（レストランは予約）で必ず確保する（${MAX_S}本まで）` },
   A: { title: "A なるべく乗る", hint: "優先パスや空いた時間で狙う" },
   B: { title: "B 乗れたら乗る", hint: "執着しない。予備日や夜に拾う" },
 };
 
 /** A3 合意リスト（優先順位）。2人とも投票し終えると作れる */
-export function ConsensusScreen({ me, votes, consensus, onSave }: Props) {
+export function ConsensusScreen({ me, votes, meals, consensus, onSave }: Props) {
   const ready = isComplete(votes.toshi, RIDES) && isComplete(votes.tsuma, RIDES);
   if (!ready) {
     return (
@@ -68,7 +75,7 @@ export function ConsensusScreen({ me, votes, consensus, onSave }: Props) {
       {items.length === 0 ? (
         <div className="empty-state">
           <p>2人の投票から、おすすめの順番を作ります。そのあと2人で並べ替えて確定します。</p>
-          <button className="primary" onClick={() => save(suggestedConsensus(candidates))}>
+          <button className="primary" onClick={() => save(suggestedConsensus(candidates, meals))}>
             投票結果からおすすめで並べる
           </button>
         </div>
@@ -116,10 +123,11 @@ export function ConsensusScreen({ me, votes, consensus, onSave }: Props) {
                           <div>
                             <strong>{ride.nameJa}</strong>
                             <span className="sub">
-                              {parkName(ride.park)}
-                              {c && `　${PERSON_LABEL.toshi}: ${VOTE_LABELS[c.toshi]} ／ ${PERSON_LABEL.tsuma}: ${VOTE_LABELS[c.tsuma]}`}
+                              {ride.dining ? diningPlace(ride) : parkName(ride.park)}
+                              {c && `　${PERSON_LABEL.toshi}: ${voteLabel(ride, c.toshi)} ／ ${PERSON_LABEL.tsuma}: ${voteLabel(ride, c.tsuma)}`}
                             </span>
-                            {c?.soloOnly && <span className="badge">片方だけ乗る</span>}
+                            {c?.soloOnly && <span className="badge">{ride.dining ? "片方だけ行きたい" : "片方だけ乗る"}</span>}
+                            {ride.dining && <MealChoice ride={ride} item={it} meals={meals} locked={locked} onPick={(m) => save(setMeal(items, it.rideId, m))} />}
                           </div>
                         </div>
                         {!locked && (
@@ -158,12 +166,12 @@ export function ConsensusScreen({ me, votes, consensus, onSave }: Props) {
                       <div>
                         <strong>{c.ride.nameJa}</strong>
                         <span className="sub">
-                          {PERSON_LABEL.toshi}: {VOTE_LABELS[c.toshi]} ／ {PERSON_LABEL.tsuma}: {VOTE_LABELS[c.tsuma]}
+                          {PERSON_LABEL.toshi}: {voteLabel(c.ride, c.toshi)} ／ {PERSON_LABEL.tsuma}: {voteLabel(c.ride, c.tsuma)}
                         </span>
                       </div>
                     </div>
                     <div className="rank-actions">
-                      <button className="mini" onClick={() => save(sortByRank([...items, { rideId: c.ride.id, rank: "B" }]))}>
+                      <button className="mini" onClick={() => save(sortByRank([...items, toItem(c.ride, "B", meals)]))}>
                         Bに追加
                       </button>
                     </div>
@@ -175,5 +183,35 @@ export function ConsensusScreen({ me, votes, consensus, onSave }: Props) {
         </>
       )}
     </section>
+  );
+}
+
+const REASON_TEXT = {
+  both: "2人とも希望",
+  one: "片方が希望",
+  only: "この時間帯だけ",
+  none: "希望なし",
+} as const;
+
+/** レストランを朝・昼・夜のどれで入れるか。日ごとの計画を作るときに、この時間帯で枠を取る */
+function MealChoice({ ride, item, meals, locked, onPick }: { ride: Ride; item: ConsensusItem; meals: AllMeals; locked: boolean; onPick: (m: NonNullable<ConsensusItem["meal"]>) => void }) {
+  const options = ride.dining?.meals ?? [];
+  const suggestion = suggestMeal(ride, meals);
+  const current = item.meal ?? suggestion?.meal;
+  return (
+    <div className="meal-choice">
+      <span className="sub">
+        希望: {PERSON_LABEL.toshi} {mealText(meals.toshi[ride.id])} ／ {PERSON_LABEL.tsuma} {mealText(meals.tsuma[ride.id])}
+      </span>
+      <div className="chips">
+        <span className="meal-choice-label">🍽 行く時間帯</span>
+        {options.map((m) => (
+          <button key={m} className={m === current ? "mini on" : "mini"} disabled={locked || options.length === 1} onClick={() => onPick(m)} aria-pressed={m === current}>
+            {MEAL_LABEL[m]}
+          </button>
+        ))}
+        {item.meal === undefined && suggestion && <span className="sub">（おすすめ: {REASON_TEXT[suggestion.reason]}）</span>}
+      </div>
+    </div>
   );
 }

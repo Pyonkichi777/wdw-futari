@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { DINING } from "../data/dining";
+import { RIDES } from "../data/rides";
 import { bookingOpensJst, filterDining } from "./dining";
 
 const ALL = { area: "ALL", meal: "ALL", q: "" } as const;
 
 describe("キャラクターダイニング", () => {
-  it("idが重ならず、公式ページのパスがある", () => {
+  it("idが重ならず、公式ページのパスがあり、どれも投票の対象", () => {
     expect(new Set(DINING.map((d) => d.id)).size).toBe(DINING.length);
-    for (const d of DINING) expect(d.officialPath).toMatch(/^\/dining\/[a-z0-9-]+\/[a-z0-9-]+\/$/);
+    for (const d of DINING) {
+      expect(d.officialPath).toMatch(/^\/dining\/[a-z0-9-]+\/[a-z0-9-]+\/$/);
+      expect(d.kind).toBe("dining");
+      expect(d.dining?.meals.length).toBeGreaterThan(0);
+      expect(RIDES).toContain(d);
+    }
   });
 
   it("予約開始: 4/30チェックインなら3/1の朝6時（米東部・標準時間）＝日本時間20時", () => {
@@ -23,8 +29,8 @@ describe("キャラクターダイニング", () => {
     const park = filterDining(DINING, { ...ALL, area: "park" });
     const resort = filterDining(DINING, { ...ALL, area: "resort" });
     expect(park.length + resort.length).toBe(DINING.length);
-    expect(park.every((d) => d.needsAdmission)).toBe(true);
-    expect(resort.every((d) => !d.needsAdmission)).toBe(true);
+    expect(park.every((d) => d.dining?.inPark)).toBe(true);
+    expect(resort.every((d) => d.dining?.inPark === false)).toBe(true);
   });
 
   it("食事の時間帯とキャラクター名で探せる", () => {

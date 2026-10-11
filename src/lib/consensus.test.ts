@@ -125,3 +125,19 @@ describe("アトラクションデータ", () => {
     expect(ranks).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 });
+
+describe("合意リストのレストラン", () => {
+  it("おすすめで並べると、レストランには2人の希望から時間帯が入る（乗り物には入らない）", async () => {
+    const { RIDES, rideById } = await import("../data/rides");
+    const { buildCandidates, suggestedConsensus, setMeal } = await import("./consensus");
+    const crystal = rideById("dine-crystal-palace")!;
+    const tron = rideById("tron")!;
+    const rides = RIDES.filter((r) => r === crystal || r === tron);
+    const votes = { toshi: { [crystal.id]: "must", [tron.id]: "must" }, tsuma: { [crystal.id]: "want", [tron.id]: "must" } } as const;
+    const meals = { toshi: { [crystal.id]: ["lunch", "dinner"] as const }, tsuma: { [crystal.id]: ["dinner"] as const } };
+    const items = suggestedConsensus(buildCandidates(rides, votes), meals);
+    expect(items.find((i) => i.rideId === crystal.id)?.meal).toBe("dinner");
+    expect(items.find((i) => i.rideId === tron.id)?.meal).toBeUndefined();
+    expect(setMeal(items, crystal.id, "breakfast").find((i) => i.rideId === crystal.id)?.meal).toBe("breakfast");
+  });
+});

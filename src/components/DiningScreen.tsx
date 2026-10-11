@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { DINING, MEAL_LABEL, PRICE_LABEL, STYLE_LABEL, type CharacterDining, type MealPeriod } from "../data/dining";
-import { parkName } from "../data/parks";
+import { DINING, MEAL_LABEL } from "../data/dining";
+import { voteLabel } from "../lib/consensus";
 import { BOOKING_DAYS_BEFORE, bookingOpensJst, filterDining, type DiningArea, type DiningFilter } from "../lib/dining";
-import { OFFICIAL_SITE } from "../lib/links";
+import type { MealPeriod, Votes } from "../types";
+import { RideCard } from "./RideCard";
 
 const KEY = "wdw-futari:filters:dining";
 const EMPTY: DiningFilter = { area: "ALL", meal: "ALL", q: "" };
@@ -28,8 +29,13 @@ function load(): DiningFilter {
   }
 }
 
-/** キャラクターダイニング（キャラクターに会えるレストラン）の一覧 */
-export function DiningScreen() {
+interface Props {
+  myVotes: Votes;
+  onGoVote: (rideId: string) => void;
+}
+
+/** キャラクターダイニング（キャラクターに会えるレストラン）の一覧。投票は「投票」タブで乗り物と一緒に行う */
+export function DiningScreen({ myVotes, onGoVote }: Props) {
   const [filter, setFilter] = useState<DiningFilter>(load);
   const update = (patch: Partial<DiningFilter>): void => {
     const next = { ...filter, ...patch };
@@ -99,83 +105,19 @@ export function DiningScreen() {
       </div>
       <p className="count">{list.length}店を表示</p>
       <div className="list">
-        {list.map((d) => (
-          <DiningCard key={d.id} d={d} />
-        ))}
+        {list.map((r) => {
+          const mine = myVotes[r.id];
+          return (
+            <RideCard
+              key={r.id}
+              ride={r}
+              detail
+              jump={{ label: mine ? `⭐ 投票済み「${voteLabel(r, mine)}」を変える` : "⭐ これに投票する（行くならいつ？も選べる）", onClick: () => onGoVote(r.id) }}
+            />
+          );
+        })}
         {list.length === 0 && <p className="empty">この条件に当てはまる店はありません。</p>}
       </div>
     </section>
-  );
-}
-
-function DiningCard({ d }: { d: CharacterDining }) {
-  const parkClass = d.area === "resort" ? "resort" : d.area;
-  return (
-    <article className={`card dining park-${parkClass}`}>
-      <header className="card-head">
-        <div>
-          <h3>{d.nameJa}</h3>
-          <p className="en">{d.nameEn}</p>
-        </div>
-      </header>
-      <ul className="meta">
-        <li className={`park park-${parkClass}`}>{d.area === "resort" ? "ホテル" : parkName(d.area)}</li>
-        {d.meals.map((m) => (
-          <li key={m} className="accent">
-            {MEAL_LABEL[m]}
-          </li>
-        ))}
-        <li className={d.booking === "disney" ? "reserve-ok" : "reserve-other"}>{d.booking === "disney" ? "予約できる（60日前から）" : "予約はホテル側"}</li>
-        {d.walkUp && <li>当日の空き待ちリストあり</li>}
-        <li>{d.needsAdmission ? "入園チケットが必要" : "入園チケット不要"}</li>
-      </ul>
-      <p className="desc">{d.description}</p>
-      <dl className="access">
-        <div className="strong">
-          <dt>会えるキャラクター</dt>
-          <dd>{d.characters}</dd>
-        </div>
-        <div>
-          <dt>キャラクターが出る食事</dt>
-          <dd>{d.meals.map((m) => MEAL_LABEL[m]).join("・")}</dd>
-        </div>
-        <div>
-          <dt>予約</dt>
-          <dd>
-            {d.booking === "disney"
-              ? `できる（公式アプリで${BOOKING_DAYS_BEFORE}日前から）${d.walkUp ? "。満席なら当日の空き待ちリストも使える" : ""}`
-              : "できる（ディズニーではなくホテル側で予約。方法は公式ページで確認）"}
-          </dd>
-        </div>
-        <div>
-          <dt>場所</dt>
-          <dd>{d.place}</dd>
-        </div>
-        <div>
-          <dt>行き方</dt>
-          <dd>{d.access}</dd>
-        </div>
-        <div>
-          <dt>料理</dt>
-          <dd>{STYLE_LABEL[d.style]}</dd>
-        </div>
-        <div>
-          <dt>価格帯</dt>
-          <dd>{PRICE_LABEL[d.price]}</dd>
-        </div>
-      </dl>
-      {d.caution && <p className="caution">⚠ {d.caution}</p>}
-      <div className="ride-links">
-        <a href={`${OFFICIAL_SITE}${d.officialPath}`} target="_blank" rel="noopener noreferrer">
-          公式サイト ↗
-        </a>
-        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${d.nameEn} character dining`)}`} target="_blank" rel="noopener noreferrer">
-          動画で見る ↗
-        </a>
-        <a href={`https://www.google.com/search?q=${encodeURIComponent(`${d.nameJa} キャラクターダイニング WDW`)}`} target="_blank" rel="noopener noreferrer">
-          日本語で調べる ↗
-        </a>
-      </div>
-    </article>
   );
 }

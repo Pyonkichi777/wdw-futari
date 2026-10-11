@@ -1,4 +1,4 @@
-import type { ParkId } from "../types";
+import type { DiningInfo, MealPeriod, ParkId, Ride } from "../types";
 
 /**
  * キャラクターダイニング（キャラクターが席を回ってくるレストラン）。
@@ -7,31 +7,16 @@ import type { ParkId } from "../types";
  * 食い違いがあるものは caution に残した。予約前に公式アプリで再確認する。
  */
 
-export type MealPeriod = "breakfast" | "lunch" | "dinner";
-export type DiningStyle = "buffet" | "family" | "set";
+export type DiningStyle = DiningInfo["style"];
 
-export interface CharacterDining {
+/** データを書くための形。アプリの中では Ride（kind: "dining"）に変換して、図鑑・投票・合意リストで乗り物と同じに扱う */
+interface DiningSeed extends Omit<DiningInfo, "inPark"> {
   id: string;
   nameJa: string;
   nameEn: string;
-  /** パークの中ならパーク、ホテルの中なら "resort" */
-  area: ParkId | "resort";
-  /** 場所（ホテル名やパーク内のエリア） */
-  place: string;
-  /** キャラクターが出てくる食事の時間帯 */
-  meals: readonly MealPeriod[];
-  characters: string;
-  style: DiningStyle;
-  /** 公式サイトの価格帯（大人1人） */
-  price: "$$$" | "$$$$";
-  /** 予約: disney = ディズニーの予約（60日前から）／hotel = ホテル側で予約 */
-  booking: "disney" | "hotel";
-  /** 当日の空き待ちリスト（Walk-up waitlist）に対応しているか */
-  walkUp: boolean;
-  /** パーク内の店は入園チケットが必要 */
-  needsAdmission: boolean;
-  /** ポップセンチュリーからの行き方 */
-  access: string;
+  /** パークの中ならそのパーク。ホテルなら、そのホテルから行きやすいパーク（日ごとの計画で使うエリア） */
+  park: ParkId;
+  inPark: boolean;
   description: string;
   officialPath: string;
   caution?: string;
@@ -43,18 +28,19 @@ export const STYLE_LABEL: Record<DiningStyle, string> = {
   family: "大皿料理（テーブルに運ばれ、おかわり自由）",
   set: "コース・セットメニュー",
 };
-export const PRICE_LABEL: Record<CharacterDining["price"], string> = {
+export const PRICE_LABEL: Record<DiningInfo["price"], string> = {
   $$$: "$$$（大人1人 $35〜59.99）",
   $$$$: "$$$$（大人1人 $60以上）",
 };
 
-export const DINING: readonly CharacterDining[] = [
+const seeds: readonly DiningSeed[] = [
   // ---- パークの中
   {
     id: "dine-crystal-palace",
     nameJa: "クリスタル・パレス",
     nameEn: "The Crystal Palace",
-    area: "MK",
+    park: "MK",
+    inPark: true,
     place: "マジックキングダム（メインストリートUSAの奥）",
     meals: ["breakfast", "lunch", "dinner"],
     characters: "くまのプーさん、ティガー、イーヨー、ピグレット",
@@ -62,7 +48,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: true,
     access: "マジックキングダムの中",
     description: "ガラス張りの温室のような建物で、プーさんと100エーカーの森の仲間がテーブルを回ってくるビュッフェ。",
     officialPath: "/dining/magic-kingdom/crystal-palace/",
@@ -71,7 +56,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-cinderella-royal-table",
     nameJa: "シンデレラ・ロイヤルテーブル",
     nameEn: "Cinderella's Royal Table",
-    area: "MK",
+    park: "MK",
+    inPark: true,
     place: "マジックキングダム（シンデレラ城の中）",
     meals: ["lunch", "dinner"],
     characters: "シンデレラとプリンセスたち（オーロラ姫など。顔ぶれは変わる）",
@@ -79,7 +65,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: true,
     access: "マジックキングダムの中",
     description: "シンデレラ城の中で食事ができる唯一のレストラン。プリンセスがテーブルに来てくれる。WDWで最も予約が取りにくい店のひとつ。",
     officialPath: "/dining/magic-kingdom/cinderella-royal-table/",
@@ -88,7 +73,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-akershus",
     nameJa: "アーケシュフース・ロイヤル・バンケットホール",
     nameEn: "Akershus Royal Banquet Hall",
-    area: "EP",
+    park: "EP",
+    inPark: true,
     place: "エプコット（ノルウェー館）",
     meals: ["breakfast", "lunch", "dinner"],
     characters: "プリンセスたち（ベル、アリエル、白雪姫など。顔ぶれは変わる）",
@@ -96,7 +82,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: false,
-    needsAdmission: true,
     access: "エプコットの中（ポップセンチュリーからスカイライナーで直行）",
     description: "中世のお城の大広間で、プリンセスたちと食事ができる。シンデレラ城の店より予約が取りやすいことが多い。",
     officialPath: "/dining/epcot/akershus-royal-banquet-hall/",
@@ -105,7 +90,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-garden-grill",
     nameJa: "ガーデン・グリル",
     nameEn: "The Garden Grill Restaurant",
-    area: "EP",
+    park: "EP",
+    inPark: true,
     place: "エプコット（ザ・ランド館）",
     meals: ["breakfast", "lunch", "dinner"],
     characters: "チップとデール、ミッキー、プルート",
@@ -113,7 +99,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: true,
     access: "エプコットの中（ポップセンチュリーからスカイライナーで直行）",
     description: "店全体がゆっくり回転し、ボートのアトラクション「リビング・ウィズ・ザ・ランド」の景色を見ながら食べられる。農夫姿のチップとデールが来てくれる。",
     officialPath: "/dining/epcot/garden-grill-restaurant/",
@@ -123,7 +108,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-hollywood-vine",
     nameJa: "ハリウッド＆ヴァイン",
     nameEn: "Hollywood & Vine",
-    area: "HS",
+    park: "HS",
+    inPark: true,
     place: "ハリウッド・スタジオ（エコー・レイク）",
     meals: ["breakfast", "lunch", "dinner"],
     characters: "ミニーと仲間たち（季節ごとの衣装）",
@@ -131,7 +117,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: true,
     access: "ハリウッド・スタジオの中（ポップセンチュリーからスカイライナーで直行）",
     description: "季節ごとにテーマが変わるミニーのパーティー。ミニーと仲間たちがその季節の衣装で出てくるビュッフェ。",
     officialPath: "/dining/hollywood-studios/hollywood-and-vine/",
@@ -141,7 +126,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-tusker-house",
     nameJa: "タスカー・ハウス",
     nameEn: "Tusker House Restaurant",
-    area: "AK",
+    park: "AK",
+    inPark: true,
     place: "アニマルキングダム（アフリカ・エリア）",
     meals: ["breakfast", "lunch", "dinner"],
     characters: "ドナルド、デイジー、ミッキー、グーフィー（サファリの衣装）",
@@ -149,7 +135,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: true,
     access: "アニマルキングダムの中",
     description: "ドナルドがホストの、アフリカ風の市場のようなビュッフェ。サファリ姿のキャラクターに会える。",
     officialPath: "/dining/animal-kingdom/tusker-house-restaurant/",
@@ -159,7 +144,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-topolino",
     nameJa: "トッポリーノズ・テラス（朝食：ブレックファスト・ア・ラ・アート）",
     nameEn: "Topolino's Terrace – Breakfast à la Art with Mickey & Friends",
-    area: "resort",
+    park: "EP",
+    inPark: false,
     place: "ディズニー・リビエラ・リゾート（最上階）",
     meals: ["breakfast"],
     characters: "画家のミッキー、ミニー、ドナルド、デイジー（芸術家の衣装）",
@@ -167,7 +153,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "ポップセンチュリーからスカイライナーで2駅（乗り換え1回）。パークに行く前に寄りやすい",
     description: "ホテル最上階のレストランで、芸術家姿のミッキーたちが回ってくる朝食。夕食はキャラクターなしの高級フレンチ・イタリアン。",
     officialPath: "/dining/riviera-resort/topolinos-terrace/",
@@ -176,7 +161,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-cape-may",
     nameJa: "ケープ・メイ・カフェ（朝食）",
     nameEn: "Cape May Cafe",
-    area: "resort",
+    park: "EP",
+    inPark: false,
     place: "ディズニー・ビーチクラブ・リゾート",
     meals: ["breakfast"],
     characters: "ミニー、ドナルド、デイジー、グーフィーなど（ビーチの衣装）",
@@ -184,7 +170,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "エプコットの裏口（インターナショナル・ゲートウェイ）から歩いて行ける",
     description: "ニューイングランドの海辺がテーマ。キャラクターが出るのは朝食のビュッフェだけで、夕食はキャラクターなしのシーフード・ビュッフェ。",
     officialPath: "/dining/beach-club-resort/cape-may-cafe/",
@@ -194,7 +179,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-chef-mickeys",
     nameJa: "シェフ・ミッキー",
     nameEn: "Chef Mickey's",
-    area: "resort",
+    park: "MK",
+    inPark: false,
     place: "ディズニー・コンテンポラリー・リゾート",
     meals: ["breakfast"],
     characters: "シェフ姿のミッキー、ミニー、ドナルド、グーフィー、プルート",
@@ -202,7 +188,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "マジックキングダムから歩くかモノレールですぐ",
     description: "モノレールが建物の中を通り抜けるホテルの、ミッキーと仲間たち5人がそろうビュッフェ。ミッキーの形のワッフルが名物。",
     officialPath: "/dining/contemporary-resort/chef-mickeys/",
@@ -212,7 +197,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-1900-park-fare",
     nameJa: "1900パーク・フェア",
     nameEn: "1900 Park Fare",
-    area: "resort",
+    park: "MK",
+    inPark: false,
     place: "ディズニー・グランドフロリディアン・リゾート＆スパ",
     meals: ["breakfast", "dinner"],
     characters: "「願い」がテーマのキャラクター（シンデレラ、ティアナなど。顔ぶれは変わる）",
@@ -220,7 +206,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "マジックキングダムからモノレールですぐ",
     description: "最高級ホテルの華やかなレストランで、「願い」をテーマにしたキャラクターと食事ができるビュッフェ。",
     officialPath: "/dining/grand-floridian-resort-and-spa/1900-park-fare/",
@@ -230,7 +215,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-ohana",
     nameJa: "オハナ（朝食：ベスト・フレンズ・ブレックファスト）",
     nameEn: "'Ohana – Best Friends Breakfast featuring Lilo & Stitch",
-    area: "resort",
+    park: "MK",
+    inPark: false,
     place: "ディズニー・ポリネシアン・ビレッジ・リゾート",
     meals: ["breakfast"],
     characters: "リロとスティッチ（ミッキーとプルートが来ることも）",
@@ -238,7 +224,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "マジックキングダムからモノレールかボートですぐ",
     description: "南の島がテーマのホテルで、リロとスティッチに会える朝食。夕食はキャラクターなしの焼き肉料理。",
     officialPath: "/dining/polynesian-resort/ohana/",
@@ -247,7 +232,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-artist-point",
     nameJa: "ストーリーブック・ダイニング（アーティスト・ポイント）",
     nameEn: "Story Book Dining at Artist Point with Snow White",
-    area: "resort",
+    park: "MK",
+    inPark: false,
     place: "ディズニー・ウィルダネス・ロッジ",
     meals: ["dinner"],
     characters: "白雪姫、ドーピー、グランピー、女王",
@@ -255,7 +241,6 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$$",
     booking: "disney",
     walkUp: true,
-    needsAdmission: false,
     access: "マジックキングダムからボートで行ける",
     description: "森の中のロッジで、「白雪姫」の世界がテーマのコースの夕食。悪役の女王にも会える珍しい店。",
     officialPath: "/dining/wilderness-lodge-resort/artist-point/",
@@ -264,7 +249,8 @@ export const DINING: readonly CharacterDining[] = [
     id: "dine-goofy-four-seasons",
     nameJa: "グーフィーと仲間たちの朝ごはん（ラヴェッロ）",
     nameEn: "Good Morning Breakfast with Goofy and His Pals",
-    area: "resort",
+    park: "MK",
+    inPark: false,
     place: "フォーシーズンズ・リゾート・オーランド（ディズニー直営ではない高級ホテル）",
     meals: ["breakfast"],
     characters: "グーフィーと仲間たち",
@@ -272,10 +258,25 @@ export const DINING: readonly CharacterDining[] = [
     price: "$$$",
     booking: "hotel",
     walkUp: false,
-    needsAdmission: false,
     access: "車かタクシーが必要（スカイライナー・バスの路線外）",
     description: "WDWの敷地内にあるフォーシーズンズのイタリアンで、グーフィーたちに会える朝食。実施は週の決まった曜日だけ。",
     officialPath: "/dining/four-seasons/breakfast-with-goofy-ravello/",
     caution: "予約・実施曜日はフォーシーズンズ側。公式ページで確認",
   },
 ];
+
+/** 図鑑・投票・合意リストで使う形（RIDES に入る） */
+export const DINING: readonly Ride[] = seeds.map(({ place, meals, characters, style, price, booking, walkUp, access, inPark, ...rest }) => ({
+  ...rest,
+  kind: "dining",
+  minHeightCm: null,
+  intensity: "弱い",
+  tags: [],
+  lightningLane: "none",
+  singleRider: false,
+  inTokyo: false,
+  earlyEntry: false,
+  dining: { inPark, place, meals, characters, style, price, booking, walkUp, access },
+}));
+
+export type { MealPeriod };

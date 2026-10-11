@@ -26,6 +26,7 @@ import {
 } from "firebase/firestore";
 import type { Consensus, ConsensusItem, PersonId, Rank, VoteLevel, Votes } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
+import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
 import type { AuthUser, Store } from "./store";
 
 export interface FirebaseBackend {
@@ -105,8 +106,9 @@ function parseConsensus(data: unknown): Consensus {
   const items = Array.isArray(d.items)
     ? d.items.flatMap((it: unknown): ConsensusItem[] => {
         if (typeof it !== "object" || it === null) return [];
-        const { rideId, rank } = it as Record<string, unknown>;
-        return typeof rideId === "string" && isRank(rank) ? [{ rideId, rank }] : [];
+        const { rideId, rank, meal } = it as Record<string, unknown>;
+        if (typeof rideId !== "string" || !isRank(rank)) return [];
+        return [meal === "breakfast" || meal === "lunch" || meal === "dinner" ? { rideId, rank, meal } : { rideId, rank }];
       })
     : [];
   const updatedBy = d.updatedBy === "toshi" || d.updatedBy === "tsuma" ? d.updatedBy : null;
@@ -137,6 +139,19 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
       const patch: Record<string, VoteLevel> = {};
       for (const id of rideIds) patch[id] = level;
       await setDoc(doc(fb.db, "votes", person), { votes: patch }, { merge: true });
+    },
+    subscribeMeals(cb) {
+      let all: AllMeals = emptyMeals();
+      const unsubs = (["toshi", "tsuma"] as const).map((p) =>
+        onSnapshot(doc(fb.db, "votes", p), (snap) => {
+          all = { ...all, [p]: parseMealPrefs(snap.data()?.meals) };
+          cb(all);
+        }),
+      );
+      return () => unsubs.forEach((u) => u());
+    },
+    async setMeals(person, rideId, meals) {
+      await setDoc(doc(fb.db, "votes", person), { meals: { [rideId]: [...meals] } }, { merge: true });
     },
     subscribeConsensus(cb) {
       return onSnapshot(doc(fb.db, "consensus", "main"), (snap) => cb(parseConsensus(snap.data())));

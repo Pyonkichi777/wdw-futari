@@ -3,7 +3,7 @@ import type { RideKind } from "../types";
 
 export type KindFilterValue = RideKind | "ALL";
 
-const KINDS: readonly RideKind[] = ["ride", "show", "greet", "parade", "night", "walk"];
+const KINDS: readonly RideKind[] = ["ride", "show", "greet", "dining", "parade", "night", "walk"];
 
 export function KindFilter({ value, onChange }: { value: KindFilterValue; onChange: (v: KindFilterValue) => void }) {
   const options: { id: KindFilterValue; label: string }[] = [{ id: "ALL", label: "種類すべて" }, ...KINDS.map((k) => ({ id: k, label: KIND_LABEL[k] }))];

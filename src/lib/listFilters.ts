@@ -4,7 +4,7 @@ import { FEATURES, matchesFeatures, type FeatureId } from "./filters";
 import { matchesQuery } from "./search";
 import { VOTE_STATUSES, matchesVoteStatus, type VoteStatus } from "./voteFilter";
 
-const KIND_IDS: readonly RideKind[] = ["ride", "show", "greet", "parade", "night", "walk"];
+const KIND_IDS: readonly RideKind[] = ["ride", "show", "greet", "dining", "parade", "night", "walk"];
 
 /** 図鑑・投票の絞り込み条件。タブを移ってもアプリを閉じても残す */
 export interface ListFilters {

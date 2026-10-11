@@ -4,9 +4,9 @@ import { RIDES, rideById } from "../data/rides";
 import { motionDots, motionOf } from "./motion";
 
 describe("酔い度", () => {
-  it("全アトラクションに酔い度がある（グリーティングは対象外で「なし」）", () => {
+  it("全アトラクションに酔い度がある（グリーティング・レストランは対象外で「なし」）", () => {
     for (const r of RIDES) {
-      if (r.kind === "greet") expect(motionOf(r).level).toBe(0);
+      if (r.kind === "greet" || r.kind === "dining") expect(motionOf(r).level).toBe(0);
       else expect(MOTION[r.id]).toBeDefined();
     }
   });

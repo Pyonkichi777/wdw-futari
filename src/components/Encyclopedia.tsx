@@ -1,5 +1,5 @@
 import { DATA_AS_OF, RIDES } from "../data/rides";
-import { VOTE_LABELS } from "../lib/consensus";
+import { voteLabel } from "../lib/consensus";
 import { applyFilters } from "../lib/listFilters";
 import type { Votes } from "../types";
 import { RideCard } from "./RideCard";
@@ -23,7 +23,7 @@ export function Encyclopedia({ myVotes, focus, onGoVote }: Props) {
     <section>
       <h2>アトラクション図鑑</h2>
       <p className="note">
-        4パークの乗り物・ショー・パレード・夜のショー・散策路・キャラクターグリーティングの全{RIDES.length}件。身長制限・時短パス・開園前入園は{DATA_AS_OF}に公式サイトで確認した内容で、出発1ヶ月前に再確認します。
+        4パークの乗り物・ショー・パレード・夜のショー・散策路・キャラクターグリーティング・キャラクターダイニングの全{RIDES.length}件。身長制限・時短パス・開園前入園は{DATA_AS_OF}に公式サイトで確認した内容で、出発1ヶ月前に再確認します。
       </p>
       <ListFilterBar filters={filters} onChange={setFilters} base={base} myVotes={myVotes} />
       <p className="count">{rides.length}件を表示</p>
@@ -37,7 +37,7 @@ export function Encyclopedia({ myVotes, focus, onGoVote }: Props) {
             detail
             lit={lit === r.id}
             jump={{
-              label: mine ? `⭐ 投票済み「${VOTE_LABELS[mine]}」を変える` : "⭐ これに投票する",
+              label: mine ? `⭐ 投票済み「${voteLabel(r, mine)}」を変える` : "⭐ これに投票する",
               onClick: () => onGoVote(r.id),
             }}
           />

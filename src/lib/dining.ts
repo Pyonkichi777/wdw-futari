@@ -1,7 +1,8 @@
-import type { CharacterDining, MealPeriod } from "../data/dining";
-import { MEAL_LABEL, STYLE_LABEL } from "../data/dining";
-import { PARKS } from "../data/parks";
-import { normalize } from "./search";
+import { MEAL_LABEL, PRICE_LABEL, STYLE_LABEL } from "../data/dining";
+import { parkName } from "../data/parks";
+import type { MealPeriod, Ride } from "../types";
+import type { AccessLine } from "./access";
+import { matchesQuery } from "./search";
 
 /** ディズニーの食事予約は、直営ホテル宿泊者ならチェックイン日の60日前・朝6時（米東部時間）から滞在全日分（最大10日）を予約できる */
 export const BOOKING_DAYS_BEFORE = 60;
@@ -29,16 +30,39 @@ export interface DiningFilter {
   q: string;
 }
 
-const placeName = (d: CharacterDining): string => (d.area === "resort" ? "ホテル" : (PARKS.find((p) => p.id === d.area)?.nameJa ?? ""));
-
-export function filterDining(list: readonly CharacterDining[], f: DiningFilter): CharacterDining[] {
-  const words = f.q.split(/[\s　]+/).map(normalize).filter((w) => w !== "");
-  return list.filter((d) => {
-    if (f.area === "park" && d.area === "resort") return false;
-    if (f.area === "resort" && d.area !== "resort") return false;
+export function filterDining(list: readonly Ride[], f: DiningFilter): Ride[] {
+  return list.filter((r) => {
+    const d = r.dining;
+    if (!d) return false;
+    if (f.area === "park" && !d.inPark) return false;
+    if (f.area === "resort" && d.inPark) return false;
     if (f.meal !== "ALL" && !d.meals.includes(f.meal)) return false;
-    if (words.length === 0) return true;
-    const text = normalize([d.nameJa, d.nameEn, d.place, d.characters, d.description, placeName(d), STYLE_LABEL[d.style], ...d.meals.map((m) => MEAL_LABEL[m])].join(" "));
-    return words.every((w) => text.includes(w));
+    return matchesQuery(r, f.q);
   });
+}
+
+/** 場所の表示（ホテルの店は、計画上どのパークのエリアか添える） */
+export const diningPlace = (r: Ride): string => (r.dining?.inPark === false ? `ホテル（${parkName(r.park)}エリア）` : parkName(r.park));
+
+/** 図鑑のカードに出す説明の行 */
+export function diningLines(r: Ride): AccessLine[] {
+  const d = r.dining;
+  if (!d) return [];
+  return [
+    { label: "会えるキャラクター", value: d.characters, strong: true },
+    { label: "キャラクターが出る食事", value: d.meals.map((m) => MEAL_LABEL[m]).join("・") },
+    {
+      label: "予約",
+      value:
+        d.booking === "disney"
+          ? `できる（公式アプリで${BOOKING_DAYS_BEFORE}日前から）${d.walkUp ? "。満席なら当日の空き待ちリストも使える" : ""}`
+          : "できる（ディズニーではなくホテル側で予約。方法は公式ページで確認）",
+      strong: true,
+    },
+    { label: "入園チケット", value: d.inPark ? "必要（パークの中の店）" : "不要（ホテルの中の店）" },
+    { label: "場所", value: d.place },
+    { label: "行き方", value: d.access },
+    { label: "料理", value: STYLE_LABEL[d.style] },
+    { label: "価格帯", value: PRICE_LABEL[d.price] },
+  ];
 }

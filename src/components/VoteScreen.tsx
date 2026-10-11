@@ -1,7 +1,9 @@
 import { RIDES } from "../data/rides";
-import { VOTE_LABELS, VOTE_ORDER, answeredCount, isComplete, type AllVotes } from "../lib/consensus";
+import { VOTE_LABELS, VOTE_ORDER, answeredCount, isComplete, voteLabel, type AllVotes } from "../lib/consensus";
+import type { AllMeals } from "../lib/meals";
+import { MealPicker, mealText } from "./MealPicker";
 import { PERSON_LABEL, partnerOf } from "../lib/store";
-import type { PersonId, VoteLevel } from "../types";
+import type { MealPeriod, PersonId, VoteLevel } from "../types";
 import { applyFilters, isFiltered } from "../lib/listFilters";
 import { RideCard } from "./RideCard";
 import { useRideFocus, type RideFocus } from "./useRideFocus";
@@ -16,10 +18,13 @@ interface Props {
   onBulkVote: (rideIds: string[], level: VoteLevel) => void;
   focus: RideFocus | null;
   onGoZukan: (rideId: string) => void;
+  /** レストランに「行くならいつ」の希望 */
+  meals: AllMeals;
+  onMeals: (rideId: string, meals: MealPeriod[]) => void;
 }
 
 /** A2 2人の「乗りたい」投票。相手の回答は、自分が全部答えるまで見えない */
-export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: Props) {
+export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan, meals, onMeals }: Props) {
   const [filters, setFilters] = useListFilters("vote");
   const lit = useRideFocus(focus);
   const partner = partnerOf(me);
@@ -75,13 +80,15 @@ export function VoteScreen({ me, votes, onVote, onBulkVote, focus, onGoZukan }: 
               <div className="vote-buttons" role="radiogroup" aria-label={`${r.nameJa}の投票`}>
                 {VOTE_ORDER.map((lv) => (
                   <button key={lv} role="radio" aria-checked={mine[r.id] === lv} className={`vote vote-${lv}${mine[r.id] === lv ? " on" : ""}`} onClick={() => onVote(r.id, lv)}>
-                    {VOTE_LABELS[lv]}
+                    {voteLabel(r, lv)}
                   </button>
                 ))}
               </div>
+              {r.dining && mine[r.id] !== "skip" && <MealPicker ride={r} value={meals[me][r.id]} onChange={(m) => onMeals(r.id, m)} />}
               {revealed && (
                 <p className="partner-vote">
-                  {PERSON_LABEL[partner]}: {partnerVote ? <strong className={`pv-${partnerVote}`}>{VOTE_LABELS[partnerVote]}</strong> : "まだ"}
+                  {PERSON_LABEL[partner]}: {partnerVote ? <strong className={`pv-${partnerVote}`}>{voteLabel(r, partnerVote)}</strong> : "まだ"}
+                  {r.dining && partnerVote && partnerVote !== "skip" && (r.dining.meals.length > 1 ? `（${mealText(meals[partner][r.id])}）` : "")}
                 </p>
               )}
             </RideCard>

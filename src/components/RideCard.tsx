@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { MEAL_LABEL } from "../data/dining";
 import { parkName } from "../data/parks";
+import { diningPlace } from "../lib/dining";
 import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
@@ -24,9 +26,19 @@ const GREET_CHIP: Record<GreetStyle, string> = {
 export function RideMeta({ ride }: { ride: Ride }) {
   return (
     <ul className="meta">
-      <li className={`park park-${ride.park}`}>{parkName(ride.park)}</li>
+      <li className={`park park-${ride.dining?.inPark === false ? "resort" : ride.park}`}>{ride.dining ? diningPlace(ride) : parkName(ride.park)}</li>
       <li>{KIND_LABEL[ride.kind]}</li>
-      {ride.greet ? (
+      {ride.dining ? (
+        <>
+          {ride.dining.meals.map((m) => (
+            <li key={m} className="accent">
+              {MEAL_LABEL[m]}
+            </li>
+          ))}
+          <li className={ride.dining.booking === "disney" ? "reserve-ok" : "reserve-other"}>{ride.dining.booking === "disney" ? "予約できる（60日前から）" : "予約はホテル側"}</li>
+          {ride.dining.walkUp && <li>当日の空き待ちリストあり</li>}
+        </>
+      ) : ride.greet ? (
         <li className="accent">{GREET_CHIP[ride.greet.style]}</li>
       ) : (
         <>
@@ -35,12 +47,12 @@ export function RideMeta({ ride }: { ride: Ride }) {
         </>
       )}
       <MotionChip ride={ride} />
-      <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>
+      {!ride.dining && <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>}
       {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
       {ride.kind === "ride" && ride.earlyEntry && <li className="accent">開園前入園OK</li>}
       {ride.singleRider && <li className="accent">1人乗り専用の列あり</li>}
       <ReviewChip ride={ride} />
-      <li>{ride.inTokyo ? "東京にもある" : "東京にない"}</li>
+      {!ride.dining && <li>{ride.inTokyo ? "東京にもある" : "東京にない"}</li>}
       {ride.tags
         .filter((t) => t !== "ショー")
         .map((t) => (

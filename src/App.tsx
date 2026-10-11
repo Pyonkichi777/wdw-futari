@@ -14,6 +14,7 @@ import { VoteScreen } from "./components/VoteScreen";
 import type { RideFocus } from "./components/useRideFocus";
 import { firebaseConfig } from "./firebaseConfig";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./lib/consensus";
+import { emptyMeals, type AllMeals } from "./lib/meals";
 import { authErrorMessage } from "./lib/errors";
 import {
   createFirestoreStore,
@@ -121,6 +122,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   useEffect(() => store.subscribeVotes(setVotes), [store]);
   useEffect(() => store.subscribeConsensus(setConsensus), [store]);
   const { unseen: urgent } = useNews();
+  const [meals, setMeals] = useState<AllMeals>(emptyMeals);
+  useEffect(() => store.subscribeMeals(setMeals), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -172,11 +175,13 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onBulkVote={(ids, lv) => store.setVotes(me, ids, lv).catch(report)}
             focus={focus}
             onGoZukan={(id) => jumpTo("zukan", id)}
+            meals={meals}
+            onMeals={(id, m) => store.setMeals(me, id, m).catch(report)}
           />
         )}
-        {tab === "dining" && <DiningScreen />}
+        {tab === "dining" && <DiningScreen myVotes={votes[me]} onGoVote={(id) => jumpTo("vote", id)} />}
         {tab === "news" && <NewsScreen />}
-        {tab === "consensus" && <ConsensusScreen me={me} votes={votes} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
+        {tab === "consensus" && <ConsensusScreen me={me} votes={votes} meals={meals} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
       <ScrollTopButton />
       <nav className="tabs">

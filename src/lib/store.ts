@@ -1,5 +1,6 @@
-import type { Consensus, PersonId, VoteLevel } from "../types";
+import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import type { AllVotes } from "./consensus";
+import type { AllMeals } from "./meals";
 
 export type Unsubscribe = () => void;
 
@@ -8,6 +9,9 @@ export interface Store {
   subscribeVotes(cb: (all: AllVotes) => void): Unsubscribe;
   setVote(person: PersonId, rideId: string, level: VoteLevel): Promise<void>;
   setVotes(person: PersonId, rideIds: readonly string[], level: VoteLevel): Promise<void>;
+  /** レストランに「行くならいつ」の希望（投票と同じ場所に保存） */
+  subscribeMeals(cb: (all: AllMeals) => void): Unsubscribe;
+  setMeals(person: PersonId, rideId: string, meals: readonly MealPeriod[]): Promise<void>;
   subscribeConsensus(cb: (c: Consensus) => void): Unsubscribe;
   saveConsensus(c: Consensus): Promise<void>;
   /** バナー写真（JPEGのdata URL）。2人だけが見られる場所に保存する。null は未設定 */
