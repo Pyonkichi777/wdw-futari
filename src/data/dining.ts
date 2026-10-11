@@ -1,4 +1,5 @@
 import type { DiningInfo, MealPeriod, ParkId, Ride } from "../types";
+import { HOTEL_RESTAURANTS } from "./hotelRestaurants";
 
 /**
  * キャラクターダイニング（キャラクターが席を回ってくるレストラン）。
@@ -10,7 +11,7 @@ import type { DiningInfo, MealPeriod, ParkId, Ride } from "../types";
 export type DiningStyle = DiningInfo["style"];
 
 /** データを書くための形。アプリの中では Ride（kind: "dining"）に変換して、図鑑・投票・合意リストで乗り物と同じに扱う */
-interface DiningSeed extends Omit<DiningInfo, "inPark"> {
+export interface DiningSeed extends Omit<DiningInfo, "inPark"> {
   id: string;
   nameJa: string;
   nameEn: string;
@@ -27,8 +28,12 @@ export const STYLE_LABEL: Record<DiningStyle, string> = {
   buffet: "ビュッフェ",
   family: "大皿料理（テーブルに運ばれ、おかわり自由）",
   set: "コース・セットメニュー",
+  alacarte: "メニューから注文",
+  counter: "フードコート（カウンターで注文。モバイルオーダー可）",
 };
 export const PRICE_LABEL: Record<DiningInfo["price"], string> = {
+  $: "$（大人1人 $14.99以下）",
+  $$: "$$（大人1人 $15〜34.99）",
   $$$: "$$$（大人1人 $35〜59.99）",
   $$$$: "$$$$（大人1人 $60以上）",
 };
@@ -266,7 +271,7 @@ const seeds: readonly DiningSeed[] = [
 ];
 
 /** 図鑑・投票・合意リストで使う形（RIDES に入る） */
-export const DINING: readonly Ride[] = seeds.map(({ place, meals, characters, style, price, booking, walkUp, access, inPark, ...rest }) => ({
+export const DINING: readonly Ride[] = [...seeds, ...HOTEL_RESTAURANTS].map(({ place, meals, characters, style, price, booking, walkUp, access, inPark, cuisine, hours, ...rest }) => ({
   ...rest,
   kind: "dining",
   minHeightCm: null,
@@ -276,7 +281,7 @@ export const DINING: readonly Ride[] = seeds.map(({ place, meals, characters, st
   singleRider: false,
   inTokyo: false,
   earlyEntry: false,
-  dining: { inPark, place, meals, characters, style, price, booking, walkUp, access },
+  dining: { inPark, place, meals, characters, style, price, booking, walkUp, access, ...(cuisine ? { cuisine } : {}), ...(hours ? { hours } : {}) },
 }));
 
 export type { MealPeriod };

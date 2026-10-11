@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { DINING, MEAL_LABEL } from "../data/dining";
 import { voteLabel } from "../lib/consensus";
-import { BOOKING_DAYS_BEFORE, bookingOpensJst, filterDining, type DiningArea, type DiningFilter } from "../lib/dining";
+import { BOOKING_DAYS_BEFORE, bookingOpensJst, filterDining, type DiningArea, type DiningFilter, type DiningType } from "../lib/dining";
 import type { MealPeriod, Votes } from "../types";
 import { RideCard } from "./RideCard";
 
 const KEY = "wdw-futari:filters:dining";
-const EMPTY: DiningFilter = { area: "ALL", meal: "ALL", q: "" };
+const EMPTY: DiningFilter = { type: "ALL", area: "ALL", meal: "ALL", q: "" };
+const TYPES: readonly { id: DiningType; label: string }[] = [
+  { id: "ALL", label: "すべての店" },
+  { id: "character", label: "キャラクターに会える" },
+  { id: "plain", label: "ふつうのレストラン" },
+];
 const AREAS: readonly { id: DiningArea; label: string }[] = [
   { id: "ALL", label: "すべて" },
   { id: "park", label: "パークの中" },
@@ -20,6 +25,7 @@ function load(): DiningFilter {
     if (typeof raw !== "object" || raw === null) return EMPTY;
     const r = raw as Record<string, unknown>;
     return {
+      type: TYPES.some((t) => t.id === r.type) ? (r.type as DiningType) : "ALL",
       area: AREAS.some((a) => a.id === r.area) ? (r.area as DiningArea) : "ALL",
       meal: MEALS.includes(r.meal as MealPeriod) ? (r.meal as MealPeriod | "ALL") : "ALL",
       q: typeof r.q === "string" ? r.q.slice(0, 100) : "",
@@ -34,7 +40,7 @@ interface Props {
   onGoVote: (rideId: string) => void;
 }
 
-/** キャラクターダイニング（キャラクターに会えるレストラン）の一覧。投票は「投票」タブで乗り物と一緒に行う */
+/** レストランの一覧（キャラクターダイニング＋ホテルのレストラン）。投票は「投票」タブで乗り物と一緒に行う */
 export function DiningScreen({ myVotes, onGoVote }: Props) {
   const [filter, setFilter] = useState<DiningFilter>(load);
   const update = (patch: Partial<DiningFilter>): void => {
@@ -50,8 +56,10 @@ export function DiningScreen({ myVotes, onGoVote }: Props) {
 
   return (
     <section>
-      <h2>キャラクターダイニング</h2>
-      <p className="note">キャラクターがテーブルを回ってきて、写真やサインに応じてくれるレストラン{DINING.length}店。どの店も事前予約ができ、人気店は予約なしではまず入れません。</p>
+      <h2>レストラン</h2>
+      <p className="note">
+        キャラクターがテーブルを回ってくる「キャラクターダイニング」{DINING.filter((d) => d.dining?.characters).length}店と、ホテルの中のふつうのレストラン{DINING.filter((d) => !d.dining?.characters).length}店。人気店は予約なしではまず入れません。ホテルの店は入園チケットなしで行けて、そのホテルから行きやすいパークのエリアに入れています。
+      </p>
 
       <div className="booking-box">
         <p className="booking-title">📅 予約はいつから？</p>
@@ -78,8 +86,8 @@ export function DiningScreen({ myVotes, onGoVote }: Props) {
         <input
           type="search"
           enterKeyHint="search"
-          placeholder="店名・キャラクターで検索（例: スティッチ）"
-          aria-label="店名・キャラクターで検索"
+          placeholder="店名・キャラクター・料理で検索（例: スティッチ、ステーキ）"
+          aria-label="店名・キャラクター・料理で検索"
           value={filter.q}
           onChange={(e) => update({ q: e.target.value })}
         />
@@ -88,6 +96,13 @@ export function DiningScreen({ myVotes, onGoVote }: Props) {
             ×
           </button>
         )}
+      </div>
+      <div className="chips" role="tablist" aria-label="キャラクターの有無で絞り込む">
+        {TYPES.map((t) => (
+          <button key={t.id} role="tab" aria-selected={filter.type === t.id} className={filter.type === t.id ? "chip on" : "chip"} onClick={() => update({ type: t.id })}>
+            {t.label}
+          </button>
+        ))}
       </div>
       <div className="chips" role="tablist" aria-label="場所で絞り込む">
         {AREAS.map((a) => (

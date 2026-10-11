@@ -18,7 +18,7 @@ export function normalize(text: string): string {
 /** 検索の対象にする文字（名前・英語名・説明・キャラクター・パーク・種類） */
 function haystack(ride: Ride): string {
   const park = PARKS.find((p) => p.id === ride.park);
-  return normalize([ride.nameJa, ride.nameEn, ride.description, ride.greet?.characters ?? "", ride.dining?.characters ?? "", ride.dining?.place ?? "", park?.nameJa ?? "", KIND_LABEL[ride.kind]].join(" "));
+  return normalize([ride.nameJa, ride.nameEn, ride.description, ride.greet?.characters ?? "", ride.dining?.characters ?? "", ride.dining?.place ?? "", ride.dining?.cuisine ?? "", park?.nameJa ?? "", KIND_LABEL[ride.kind]].join(" "));
 }
 
 const cache = new Map<string, string>();

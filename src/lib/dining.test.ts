@@ -3,7 +3,7 @@ import { DINING } from "../data/dining";
 import { RIDES } from "../data/rides";
 import { bookingOpensJst, filterDining } from "./dining";
 
-const ALL = { area: "ALL", meal: "ALL", q: "" } as const;
+const ALL = { type: "ALL", area: "ALL", meal: "ALL", q: "" } as const;
 
 describe("キャラクターダイニング", () => {
   it("idが重ならず、公式ページのパスがあり、どれも投票の対象", () => {
@@ -38,5 +38,19 @@ describe("キャラクターダイニング", () => {
     expect(filterDining(DINING, { ...ALL, q: "女王" }).map((d) => d.id)).toEqual(["dine-artist-point"]);
     expect(filterDining(DINING, { ...ALL, q: "すてぃっち" }).map((d) => d.id)).toEqual(["dine-ohana"]);
     expect(filterDining(DINING, { ...ALL, q: "ぷーさん" }).map((d) => d.id)).toEqual(["dine-crystal-palace"]);
+  });
+
+  it("キャラクターに会える店／ふつうのレストランで分けられ、ホテルの店も朝・昼・夜を持つ", () => {
+    const chara = filterDining(DINING, { ...ALL, type: "character" });
+    const plain = filterDining(DINING, { ...ALL, type: "plain" });
+    expect(chara.length + plain.length).toBe(DINING.length);
+    expect(chara.every((d) => d.dining?.characters)).toBe(true);
+    expect(plain.every((d) => d.dining?.inPark === false && d.dining.characters === null)).toBe(true);
+    expect(plain.find((d) => d.id === "hotel-kona-cafe")?.dining?.meals).toEqual(["breakfast", "lunch", "dinner"]);
+  });
+
+  it("泊まるホテルのフードコートは予約なし、料理で検索できる", () => {
+    expect(filterDining(DINING, { ...ALL, q: "ポップセンチュリー" }).map((d) => d.dining?.booking)).toContain("none");
+    expect(filterDining(DINING, { ...ALL, q: "すてーき" }).map((d) => d.id)).toContain("hotel-yachtsman");
   });
 });

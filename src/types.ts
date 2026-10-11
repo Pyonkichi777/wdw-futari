@@ -11,7 +11,7 @@ export type RideKind = "ride" | "show" | "parade" | "night" | "walk" | "greet" |
 /** 食事の時間帯 */
 export type MealPeriod = "breakfast" | "lunch" | "dinner";
 
-/** キャラクターダイニングの詳細（kind が "dining" のときだけ） */
+/** レストランの詳細（kind が "dining" のときだけ。キャラクターダイニングとホテルのふつうのレストランの両方） */
 export interface DiningInfo {
   /** パークの中の店か（false = ホテルの中。park はそのホテルから行きやすいパーク＝計画上のエリア） */
   inPark: boolean;
@@ -19,12 +19,17 @@ export interface DiningInfo {
   place: string;
   /** キャラクターが出てくる食事の時間帯 */
   meals: readonly MealPeriod[];
-  characters: string;
-  style: "buffet" | "family" | "set";
+  /** 会えるキャラクター。null = キャラクターの出ないふつうのレストラン */
+  characters: string | null;
+  style: "buffet" | "family" | "set" | "alacarte" | "counter";
   /** 公式サイトの価格帯（大人1人） */
-  price: "$$$" | "$$$$";
-  /** 予約: disney = ディズニーの予約（60日前から）／hotel = ホテル側で予約 */
-  booking: "disney" | "hotel";
+  price: "$" | "$$" | "$$$" | "$$$$";
+  /** 予約: disney = ディズニーの予約（60日前から）／hotel = ホテル側で予約／none = 予約なし（フードコート） */
+  booking: "disney" | "hotel" | "none";
+  /** 料理のジャンル */
+  cuisine?: string;
+  /** 営業時間の目安（公式サイト・2026-10-10時点） */
+  hours?: string;
   /** 当日の空き待ちリスト（Walk-up List）に対応しているか */
   walkUp: boolean;
   /** ポップセンチュリーからの行き方 */

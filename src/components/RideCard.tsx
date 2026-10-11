@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { MEAL_LABEL } from "../data/dining";
 import { parkName } from "../data/parks";
-import { diningPlace } from "../lib/dining";
+import { BOOKING_CHIP, diningPlace } from "../lib/dining";
 import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
@@ -35,7 +35,8 @@ export function RideMeta({ ride }: { ride: Ride }) {
               {MEAL_LABEL[m]}
             </li>
           ))}
-          <li className={ride.dining.booking === "disney" ? "reserve-ok" : "reserve-other"}>{ride.dining.booking === "disney" ? "予約できる（60日前から）" : "予約はホテル側"}</li>
+          {ride.dining.characters && <li className="accent">キャラクターに会える</li>}
+          <li className={ride.dining.booking === "disney" ? "reserve-ok" : "reserve-other"}>{BOOKING_CHIP[ride.dining.booking]}</li>
           {ride.dining.walkUp && <li>当日の空き待ちリストあり</li>}
         </>
       ) : ride.greet ? (
