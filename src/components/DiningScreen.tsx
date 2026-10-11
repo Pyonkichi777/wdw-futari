@@ -58,7 +58,7 @@ export function DiningScreen({ myVotes, onGoVote }: Props) {
     <section>
       <h2>レストラン</h2>
       <p className="note">
-        キャラクターがテーブルを回ってくる「キャラクターダイニング」{DINING.filter((d) => d.dining?.characters).length}店と、ホテルの中のふつうのレストラン{DINING.filter((d) => !d.dining?.characters).length}店。人気店は予約なしではまず入れません。ホテルの店は入園チケットなしで行けて、そのホテルから行きやすいパークのエリアに入れています。
+        キャラクターがテーブルを回ってくる「キャラクターダイニング」{DINING.filter((d) => d.dining?.characters).length}店と、パーク・ホテルの中のふつうのレストラン{DINING.filter((d) => !d.dining?.characters).length}店。人気店は予約なしではまず入れません。ホテルの店は入園チケットなしで行けて、そのホテルから行きやすいパークのエリアに入れています。
       </p>
 
       <div className="booking-box">

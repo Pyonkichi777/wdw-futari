@@ -1,5 +1,6 @@
 import type { DiningInfo, MealPeriod, ParkId, Ride } from "../types";
 import { HOTEL_RESTAURANTS } from "./hotelRestaurants";
+import { PARK_RESTAURANTS } from "./parkRestaurants";
 
 /**
  * キャラクターダイニング（キャラクターが席を回ってくるレストラン）。
@@ -271,7 +272,7 @@ const seeds: readonly DiningSeed[] = [
 ];
 
 /** 図鑑・投票・合意リストで使う形（RIDES に入る） */
-export const DINING: readonly Ride[] = [...seeds, ...HOTEL_RESTAURANTS].map(({ place, meals, characters, style, price, booking, walkUp, access, inPark, cuisine, hours, ...rest }) => ({
+export const DINING: readonly Ride[] = [...seeds, ...PARK_RESTAURANTS, ...HOTEL_RESTAURANTS].map(({ place, meals, characters, style, price, booking, walkUp, access, inPark, cuisine, hours, ...rest }) => ({
   ...rest,
   kind: "dining",
   minHeightCm: null,

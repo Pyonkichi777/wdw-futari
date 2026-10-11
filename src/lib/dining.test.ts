@@ -45,12 +45,14 @@ describe("キャラクターダイニング", () => {
     const plain = filterDining(DINING, { ...ALL, type: "plain" });
     expect(chara.length + plain.length).toBe(DINING.length);
     expect(chara.every((d) => d.dining?.characters)).toBe(true);
-    expect(plain.every((d) => d.dining?.inPark === false && d.dining.characters === null)).toBe(true);
+    expect(plain.every((d) => d.dining?.characters === null)).toBe(true);
+    expect(plain.map((d) => d.id)).toContain("park-space-220");
     expect(plain.find((d) => d.id === "hotel-kona-cafe")?.dining?.meals).toEqual(["breakfast", "lunch", "dinner"]);
   });
 
   it("泊まるホテルのフードコートは予約なし、料理で検索できる", () => {
     expect(filterDining(DINING, { ...ALL, q: "ポップセンチュリー" }).map((d) => d.dining?.booking)).toContain("none");
     expect(filterDining(DINING, { ...ALL, q: "すてーき" }).map((d) => d.id)).toContain("hotel-yachtsman");
+    expect(filterDining(DINING, { ...ALL, q: "space 220" }).map((d) => d.id)).toEqual(["park-space-220", "park-space-220-lounge"]);
   });
 });
