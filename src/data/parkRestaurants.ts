@@ -1,7 +1,7 @@
 import type { DiningSeed } from "./dining";
 
 /**
- * パークの中のふつうのレストラン（キャラクターは出ない。席で注文するテーブルサービスと、人気のラウンジ）。
+ * パークの中のふつうのレストラン（キャラクターは出ない。席で注文するテーブルサービスと、予約できるテーマのあるラウンジ）。
  * 2026-10-11 に公式サイトのレストラン一覧から作成。営業時間帯・時間の目安・料理・空き待ちリストは各店の公式ページの値。
  * 除外: 期間限定のイベント・デザートパーティー・ディナーショーのパッケージ。
  */
@@ -27,6 +27,25 @@ export const PARK_RESTAURANTS: readonly DiningSeed[] = [
     hours: "昼食 11:00〜14:55／夕食 15:00〜21:00",
     description: "「美女と野獣」の野獣の城の中で食事ができる。舞踏会の大広間・雪の降る窓の部屋・西の塔のバラの部屋がある、MKでいちばん人気のレストランのひとつ。",
     officialPath: "/dining/magic-kingdom/be-our-guest-restaurant/",
+  },
+  {
+    id: "park-beak-and-barrel",
+    nameJa: "ビーク・アンド・バレル（カリブの海賊の酒場）",
+    nameEn: "The Beak and Barrel",
+    park: "MK",
+    inPark: true,
+    place: "マジックキングダム（アドベンチャーランド・カリブの海賊のそば）",
+    meals: ["lunch", "dinner"],
+    characters: null,
+    cuisine: "カクテル・軽食（子ども向けのノンアルコールもあり）",
+    style: "alacarte",
+    price: "$$",
+    booking: "disney",
+    walkUp: false,
+    access: IN_PARK,
+    description: "「カリブの海賊」の世界の海賊の酒場。オウムのいる薄暗い店内で、海賊にちなんだドリンクと軽食を楽しめる。食事というより1杯と軽食で寄る店。",
+    officialPath: "/dining/magic-kingdom/beak-barrel/",
+    caution: "公式サイトに営業時間帯の記載がなかった（昼〜夜で登録）。利用時間に制限がある",
   },
   {
     id: "park-skipper-canteen",
@@ -143,6 +162,26 @@ export const PARK_RESTAURANTS: readonly DiningSeed[] = [
     hours: "昼食 11:30〜15:30／夕食 16:00〜21:00",
     description: "スペース220と同じ宇宙ステーションの、軽食とドリンクのラウンジ。コースより気軽に宇宙からの眺めを楽しめる。",
     officialPath: "/dining/epcot/space-220-lounge/",
+  },
+  {
+    id: "park-geo-82",
+    nameJa: "GEO-82（スペースシップ・アースの中のラウンジ）",
+    nameEn: "GEO-82",
+    park: "EP",
+    inPark: true,
+    place: "エプコット（スペースシップ・アースの球体の中）",
+    meals: ["lunch", "dinner"],
+    characters: null,
+    cuisine: "カクテル・小皿料理",
+    style: "alacarte",
+    price: "$$",
+    booking: "disney",
+    walkUp: false,
+    access: IN_PARK,
+    hours: "昼食 11:00〜15:55／夕食 16:00〜21:00",
+    description: "エプコットの象徴の大きな球体の中にある、大人だけのラウンジ。景色を見ながらカクテルと小皿料理を楽しめる。",
+    officialPath: "/dining/epcot/geo-82-lounge/",
+    caution: "21歳以上限定",
   },
   {
     id: "park-coral-reef",

@@ -53,6 +53,8 @@ describe("キャラクターダイニング", () => {
   it("泊まるホテルのフードコートは予約なし、料理で検索できる", () => {
     expect(filterDining(DINING, { ...ALL, q: "ポップセンチュリー" }).map((d) => d.dining?.booking)).toContain("none");
     expect(filterDining(DINING, { ...ALL, q: "すてーき" }).map((d) => d.id)).toContain("hotel-yachtsman");
+    expect(filterDining(DINING, { ...ALL, q: "カリブの海賊" }).map((d) => d.id)).toContain("park-beak-and-barrel");
+    expect(filterDining(DINING, { ...ALL, q: "びーく" }).map((d) => d.id)).toEqual(["park-beak-and-barrel"]);
     expect(filterDining(DINING, { ...ALL, q: "space 220" }).map((d) => d.id)).toEqual(["park-space-220", "park-space-220-lounge"]);
   });
 });
