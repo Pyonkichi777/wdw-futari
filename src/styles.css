@@ -2624,3 +2624,6 @@ ol.rsv-list {
   font-size: 0.7rem;
   color: var(--muted);
 }
+.plan-pin {
+  font-size: 0.8rem;
+}

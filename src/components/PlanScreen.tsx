@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { LL_LONG, LL_SHORT, LL_VERIFIED_AT, llKind, type LlKind } from "../lib/lightningLane";
 import { RIDES } from "../data/rides";
 import { DAY_LIMIT_MINUTES, TRANSPORT_LABEL, dayTimeline, hoursText } from "../lib/timing";
@@ -8,6 +8,7 @@ import { rideById } from "../data/rides";
 import { ITINERARY, TRIP } from "../data/trip";
 import { lightningLaneOpensJst } from "../lib/dining";
 import {
+  unpinItem,
   METHOD_LABEL,
   SLOT_LABEL,
   SLOT_ORDER,
@@ -30,7 +31,7 @@ import { checkPlan, fixAllReds } from "../lib/planChecks";
 import { clock, dayTimes } from "../lib/bookTimes";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow } from "../lib/planFixes";
-import { routeDay } from "../lib/route";
+import { optimizePlan, routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
@@ -75,12 +76,14 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck, onZukan, crowd }: Props) {
+export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
   const today = todayInOrlando();
-  const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...change(p), updatedBy: me, updatedAt: Date.now() }));
+  // 道順はいつも「近い順」（作った直後も、手で直した後も、前に保存した作戦も）
+  const plan = useMemo(() => optimizePlan(stored), [stored]);
+  const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...optimizePlan(change(p)), updatedBy: me, updatedAt: Date.now() }));
   const rankOf = (id: string): Rank | undefined => consensus.items.find((c) => c.rideId === id)?.rank;
 
   if (!consensus.confirmed || consensus.items.length === 0) {
@@ -240,13 +243,15 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           lowCount={lowIds(d.date).size}
           onRemoveLow={() => removeLow(d.date)}
           checks={checks}
-          onRoute={() => save((p) => ({ ...p, days: p.days.map((x) => (x.date === d.date ? routeDay(x) : x)) }))}
+          onUnpin={(id) => save((p) => unpinItem(p, id))}
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
           onParks={(parks) => save((p) => setDayParks(p, d.date, parks))}
           onMove={(id, to) => {
-            save((p) => moveItem(p, id, to));
+            // 午前／午後を手で変えたものは固定（自動の「近い順」で入れ替えない）
+            const cur = d.items.find((i) => i.rideId === id);
+            save((p) => moveItem(p, id, to, { pin: cur !== undefined && cur.slot !== to.slot }));
             setEditing(null);
           }}
           onRemove={(id) => {
@@ -315,7 +320,7 @@ function DayCard({
   lowCount,
   onRemoveLow,
   checks,
-  onRoute,
+  onUnpin,
   editing,
   here,
   onEdit,
@@ -333,7 +338,7 @@ function DayCard({
   lowCount: number;
   onRemoveLow: () => void;
   checks: Checks;
-  onRoute: () => void;
+  onUnpin: (id: string) => void;
   editing: string | null;
   here: ParkId | "HOTEL" | null;
   onEdit: (id: string | null) => void;
@@ -395,7 +400,16 @@ function DayCard({
               reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
-            {editing === r.id && <ItemEditor ride={r} days={days} current={{ date: day.date, slot: it.slot, method: it.method }} onMove={(to) => onMove(r.id, to)} onRemove={() => onRemove(r.id)} />}
+            {editing === r.id && (
+              <ItemEditor
+                ride={r}
+                days={days}
+                current={{ date: day.date, slot: it.slot, method: it.method }}
+                onMove={(to) => onMove(r.id, to)}
+                onRemove={() => onRemove(r.id)}
+                {...(it.pinned ? { onUnpin: () => onUnpin(r.id) } : {})}
+              />
+            )}
           </>
         )}
       />
@@ -404,7 +418,7 @@ function DayCard({
           💤 この日の「2人ともどちらでも」{lowCount}件をまとめて外す
         </button>
       )}
-      <DayMap day={day} rankOf={rankOf} onRoute={onRoute} />
+      <DayMap day={day} rankOf={rankOf} />
       {day.items.length === 0 && <p className="empty">{isReserve ? "予備日です。取りこぼした乗り物の回収や、もう一度乗りたいものに使います。" : "まだ何も入っていません。"}</p>}
     </div>
   );
@@ -488,6 +502,7 @@ function ItemRow({
       {low && <span className="low-tag">💤 優先度低</span>}
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
+      {item?.pinned && <span className="plan-pin" title="午前／午後を手で決めたもの（自動の「近い順」でも入れ替えない）">📌</span>}
       <span className="plan-item-name">{ride.nameJa}</span>
       {item && <span className={`plan-method m-${item.method}`}>{METHOD_LABEL[item.method]}</span>}
       {ride.kind === "ride" && <span className={`ll ll-${llKind(ride)}`}>{LL_SHORT[llKind(ride)]}</span>}
@@ -523,12 +538,15 @@ function ItemEditor({
   current,
   onMove,
   onRemove,
+  onUnpin,
 }: {
   ride: Ride;
   days: readonly DayPlan[];
   current: { date: string; slot: Slot; method: Method } | null;
   onMove: (to: { date: string; slot: Slot; method: Method }) => void;
   onRemove?: () => void;
+  /** 手で決めた午前／午後の固定を外す */
+  onUnpin?: () => void;
 }) {
   const methods = methodsFor(ride);
   const firstMethod: Method = methods[0] ?? "standby";
@@ -572,6 +590,11 @@ function ItemEditor({
         <button className="primary" onClick={() => onMove({ date, slot, method })}>
           {current ? "この内容に変える" : "この日に入れる"}
         </button>
+        {onUnpin && (
+          <button className="mini" onClick={onUnpin}>
+            📌 固定を外して「近い順」に任せる
+          </button>
+        )}
         {onRemove && (
           <button className="mini danger" onClick={onRemove}>
             作戦から外す
@@ -653,7 +676,7 @@ function LightningLaneGuide() {
 }
 
 /** その日に回るパークごとの地図と動線（押すと開く） */
-function DayMap({ day, rankOf, onRoute }: { day: DayPlan; rankOf: (id: string) => Rank | undefined; onRoute: () => void }) {
+function DayMap({ day, rankOf }: { day: DayPlan; rankOf: (id: string) => Rank | undefined }) {
   const [open, setOpen] = useState(false);
   const parks = [...new Set([day.morningPark, day.eveningPark])];
   if (day.items.length === 0) return null;
@@ -670,9 +693,7 @@ function DayMap({ day, rankOf, onRoute }: { day: DayPlan; rankOf: (id: string) =
               <ParkMap park={park} items={day.items.filter((i) => rideById(i.rideId)?.park === park)} rankOf={rankOf} />
             </div>
           ))}
-          <button className="mini" onClick={onRoute}>
-            🔁 この日の午前・午後の乗り物を「近い順」に組み直す
-          </button>
+          <p className="note">🔁 午前・午後の乗り物は、いつも自動で「近い順」に並べています（手で午前／午後を決めた📌は動かしません）。</p>
         </>
       )}
     </>

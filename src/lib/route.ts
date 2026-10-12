@@ -1,6 +1,6 @@
 import { COORDS } from "../data/coords";
 import { distanceKm } from "./location";
-import { SLOT_ORDER, type DayPlan, type PlanItem } from "./plan";
+import { SLOT_ORDER, type DayPlan, type Plan, type PlanItem } from "./plan";
 
 const pos = (id: string): { lat: number; lng: number } | null => {
   const c = COORDS[id];
@@ -43,7 +43,7 @@ export function orderByRoute(items: readonly PlanItem[]): PlanItem[] {
  * いったん1本の道順にまとめ、前半を午前・後半を午後に振り分け直す（行ったり来たりを減らす）
  */
 export function routeDay(d: DayPlan): DayPlan {
-  const movable = (i: PlanItem): boolean => (i.slot === "am" || i.slot === "pm") && i.method !== "show" && i.method !== "meal";
+  const movable = (i: PlanItem): boolean => (i.slot === "am" || i.slot === "pm") && i.method !== "show" && i.method !== "meal" && !i.pinned;
   const flex = d.items.filter(movable);
   if (flex.length > 1) {
     const early = d.items.filter((i) => i.slot === "early");
@@ -55,6 +55,9 @@ export function routeDay(d: DayPlan): DayPlan {
   }
   return { ...d, items: orderByRoute(d.items) };
 }
+
+/** 作戦のすべての日を、いつも「近い順」にしておく（作った直後も、手で直した後も） */
+export const optimizePlan = (plan: Plan): Plan => ({ ...plan, days: plan.days.map(routeDay) });
 
 /** 1日に歩く距離のおおよそ（km、パーク間の移動は除く） */
 export function walkKm(items: readonly PlanItem[], parkOf: (id: string) => string | undefined): number {

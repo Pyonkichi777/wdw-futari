@@ -13,6 +13,8 @@ export interface PlanItem {
   method: Method;
   /** 合意リストにはないが、アプリがおすすめで足したもの（パレードなど） */
   suggested?: boolean;
+  /** 2人が手で午前／午後を決めたもの（自動の「近い順」でも午前・午後を入れ替えない） */
+  pinned?: true;
 }
 
 export interface DayPlan {
@@ -278,17 +280,26 @@ export function unplaced(plan: Plan, consensus: readonly ConsensusItem[]): Conse
 }
 
 /** 1つの項目を別の日・枠・乗り方に動かす（日の中の並びは時間の枠の順） */
-export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: Slot; method: Method }): Plan {
+export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: Slot; method: Method }, opts: { pin?: boolean } = {}): Plan {
   let found: PlanItem | undefined;
   const days = plan.days.map((d) => {
     const hit = d.items.find((i) => i.rideId === rideId);
     if (hit) found = hit;
     return hit ? { ...d, items: d.items.filter((i) => i.rideId !== rideId) } : d;
   });
-  const item: PlanItem = { ...(found ?? {}), rideId, slot: to.slot, method: to.method };
+  const { pinned: wasPinned, ...base } = found ?? { pinned: undefined };
+  // 手で午前／午後を選んだら固定。そうでなければ、同じ枠にとどまるときだけ固定を引き継ぐ
+  const pin = (to.slot === "am" || to.slot === "pm") && (opts.pin === true || (wasPinned === true && found?.slot === to.slot));
+  const item: PlanItem = { ...base, rideId, slot: to.slot, method: to.method, ...(pin ? { pinned: true as const } : {}) };
   const excluded = (plan.excluded ?? []).filter((e) => e.rideId !== rideId);
   return { ...withExcluded(plan, excluded), days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
 }
+
+/** 手で決めた午前／午後の固定を外す（自動の「近い順」に任せる） */
+export const unpinItem = (plan: Plan, rideId: string): Plan => ({
+  ...plan,
+  days: plan.days.map((d) => ({ ...d, items: d.items.map((i) => (i.rideId === rideId && i.pinned ? (({ pinned: _p, ...rest }) => rest)(i) : i)) })),
+});
 
 export const withKept = (plan: Plan, kept: string[]): Plan => {
   const { keptLow: _old, ...rest } = plan;
@@ -363,7 +374,15 @@ export function parsePlan(data: unknown): Plan {
               if (typeof y !== "object" || y === null) return [];
               const it = y as Record<string, unknown>;
               if (typeof it.rideId !== "string" || typeof it.slot !== "string" || !SLOTS.has(it.slot) || typeof it.method !== "string" || !METHODS.has(it.method)) return [];
-              return [{ rideId: it.rideId, slot: it.slot as Slot, method: it.method as Method, ...(it.suggested === true ? { suggested: true } : {}) }];
+              return [
+                {
+                  rideId: it.rideId,
+                  slot: it.slot as Slot,
+                  method: it.method as Method,
+                  ...(it.suggested === true ? { suggested: true } : {}),
+                  ...(it.pinned === true ? { pinned: true as const } : {}),
+                },
+              ];
             })
           : [];
         return [{ date: day.date, morningPark: day.morningPark, eveningPark: day.eveningPark, items }];
