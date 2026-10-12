@@ -42,7 +42,7 @@ export const SLOT_LABEL: Record<Slot, string> = {
 
 export const METHOD_LABEL: Record<Method, string> = {
   early: "朝イチで直行",
-  single: "Single Pass（当日購入・有料）",
+  single: "Single Pass（事前に購入・有料）",
   multi: "Multi Pass（事前予約）",
   multiExtra: "Multi Pass（使った後の追加予約）",
   singleRider: "1人乗り専用の列",

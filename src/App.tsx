@@ -9,6 +9,7 @@ import { Skyline } from "./components/Skyline";
 import { DiningScreen } from "./components/DiningScreen";
 import { PlanScreen } from "./components/PlanScreen";
 import { emptyPlan, type Plan } from "./lib/plan";
+import type { Checks } from "./lib/checks";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { NewsProvider, useNews } from "./components/NewsContext";
 import { NewsScreen } from "./components/NewsScreen";
@@ -128,6 +129,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   const { unseen: urgent } = useNews();
   const [meals, setMeals] = useState<AllMeals>(emptyMeals);
   useEffect(() => store.subscribeMeals(setMeals), [store]);
+  const [checks, setChecks] = useState<Checks>({});
+  useEffect(() => store.subscribeChecks(setChecks), [store]);
   const [plan, setPlan] = useState<Plan>(emptyPlan);
   useEffect(() => store.subscribePlan(setPlan), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -187,7 +190,17 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
           />
         )}
         {tab === "dining" && <DiningScreen myVotes={votes[me]} onGoVote={(id) => jumpTo("vote", id)} />}
-        {tab === "plan" && <PlanScreen me={me} consensus={consensus} plan={plan} onSave={(p) => store.savePlan(p).catch(report)} />}
+        {tab === "plan" && (
+          <PlanScreen
+            me={me}
+            consensus={consensus}
+            plan={plan}
+            onSave={(p) => store.savePlan(p).catch(report)}
+            votes={votes}
+            checks={checks}
+            onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
+          />
+        )}
         {tab === "news" && <NewsScreen />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} meals={meals} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>

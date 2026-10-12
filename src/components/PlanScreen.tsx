@@ -24,6 +24,11 @@ import {
   type Slot,
 } from "../lib/plan";
 import { checkPlan } from "../lib/planChecks";
+import { routeDay } from "../lib/route";
+import { reservationTasks } from "../lib/reservations";
+import { voteLabel, type AllVotes } from "../lib/consensus";
+import type { Checks } from "../lib/checks";
+import { ParkMap } from "./ParkMap";
 import type { Consensus, ParkId, PersonId, Rank, Ride } from "../types";
 
 interface Props {
@@ -31,6 +36,9 @@ interface Props {
   consensus: Consensus;
   plan: Plan;
   onSave: (p: Plan) => void;
+  votes: AllVotes;
+  checks: Checks;
+  onCheck: (id: string, done: boolean) => void;
 }
 
 const parkDayLabels = ITINERARY.filter((d) => d.park).map((d) => d.date);
@@ -51,7 +59,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan, onSave }: Props) {
+export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const today = todayInOrlando();
@@ -69,7 +77,16 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
     );
   }
 
-  const generate = (): void => save(buildPlan(consensus.items, rideById, TRIP.parkDays));
+  const generate = (): void => {
+    const p = buildPlan(consensus.items, rideById, TRIP.parkDays);
+    save({ ...p, days: p.days.map(routeDay) });
+  };
+  const voteText = (r: Ride): string | null => {
+    const t = votes.toshi[r.id];
+    const w = votes.tsuma[r.id];
+    if (!t && !w) return null;
+    return `Toshi: ${t ? voteLabel(r, t) : "—"} ／ 妻: ${w ? voteLabel(r, w) : "—"}`;
+  };
 
   if (plan.days.length === 0) {
     return (
@@ -100,6 +117,8 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
 
       <WhereNow plan={plan} onHere={setHere} />
 
+      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} />
+
       <div className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
         <ul>
@@ -116,6 +135,9 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
           key={d.date}
           day={d}
           rankOf={rankOf}
+          voteText={voteText}
+          checks={checks}
+          onRoute={() => save({ ...plan, days: plan.days.map((x) => (x.date === d.date ? routeDay(x) : x)) })}
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
@@ -179,6 +201,9 @@ function DayCard({
   day,
   days,
   rankOf,
+  voteText,
+  checks,
+  onRoute,
   editing,
   here,
   onEdit,
@@ -189,6 +214,9 @@ function DayCard({
   day: DayPlan;
   days: readonly DayPlan[];
   rankOf: (id: string) => Rank | undefined;
+  voteText: (r: Ride) => string | null;
+  checks: Checks;
+  onRoute: () => void;
   editing: string | null;
   here: ParkId | "HOTEL" | null;
   onEdit: (id: string | null) => void;
@@ -234,11 +262,20 @@ function DayCard({
         here={here}
         render={(it, r, minutes) => (
           <>
-            <ItemRow ride={r} rank={rankOf(r.id)} item={it} minutes={minutes} onClick={() => onEdit(editing === r.id ? null : r.id)} />
+            <ItemRow
+              ride={r}
+              rank={rankOf(r.id)}
+              item={it}
+              minutes={minutes}
+              votes={voteText(r)}
+              reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
+              onClick={() => onEdit(editing === r.id ? null : r.id)}
+            />
             {editing === r.id && <ItemEditor ride={r} days={days} current={{ date: day.date, slot: it.slot, method: it.method }} onMove={(to) => onMove(r.id, to)} onRemove={() => onRemove(r.id)} />}
           </>
         )}
       />
+      <DayMap day={day} rankOf={rankOf} onRoute={onRoute} />
       {day.items.length === 0 && <p className="empty">{isReserve ? "予備日です。取りこぼした乗り物の回収や、もう一度乗りたいものに使います。" : "まだ何も入っていません。"}</p>}
     </div>
   );
@@ -285,7 +322,23 @@ function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTE
   );
 }
 
-function ItemRow({ ride, rank, item, minutes, onClick }: { ride: Ride; rank: Rank | undefined; item: PlanItem | null; minutes?: number; onClick: () => void }) {
+function ItemRow({
+  ride,
+  rank,
+  item,
+  minutes,
+  votes,
+  reserved,
+  onClick,
+}: {
+  ride: Ride;
+  rank: Rank | undefined;
+  item: PlanItem | null;
+  minutes?: number;
+  votes?: string | null;
+  reserved?: boolean;
+  onClick: () => void;
+}) {
   return (
     <button className="plan-item" onClick={onClick}>
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
@@ -294,6 +347,8 @@ function ItemRow({ ride, rank, item, minutes, onClick }: { ride: Ride; rank: Ran
       {item && <span className={`plan-method m-${item.method}`}>{METHOD_LABEL[item.method]}</span>}
       {ride.kind === "ride" && <span className={`ll ll-${llKind(ride)}`}>{LL_SHORT[llKind(ride)]}</span>}
       {minutes !== undefined && <span className="plan-min">⏱ {hoursText(minutes)}</span>}
+      {reserved !== undefined && <span className={reserved ? "rsv done" : "rsv todo"}>{reserved ? "✓ 予約済み" : "要予約・未"}</span>}
+      {votes && <span className="plan-votes">{votes}</span>}
     </button>
   );
 }
@@ -379,7 +434,7 @@ function LightningLaneSheet({ plan }: { plan: Plan }) {
     <div className="plan-day ll-sheet">
       <h3>⚡ 時短パスの段取り表</h3>
       <p className="note">
-        予約開始: <strong>{lightningLaneOpensJst(TRIP.checkIn)}（日本時間）</strong>。滞在中の全日分を、下の順番（取りにくい日から）で予約します。Single Pass は当日に買います。
+        予約開始: <strong>{lightningLaneOpensJst(TRIP.checkIn)}（日本時間）</strong>。Multi Pass・Single Pass とも、ホテル宿泊者は滞在中の全日分をこの日時から買えます。下の順番（取りにくい日から）で予約します。
       </p>
       <ol>
         {ordered.map(({ d, multi, extra, single }) => (
@@ -393,7 +448,7 @@ function LightningLaneSheet({ plan }: { plan: Plan }) {
               </p>
             )}
             {extra.length > 0 && <p className="note">1本使った後の追加予約: {extra.map((r) => r.nameJa).join("、")}</p>}
-            {single.length > 0 && <p>Single Pass（当日・有料）: {single.map((r) => r.nameJa).join("、")}</p>}
+            {single.length > 0 && <p>Single Pass（有料・売り切れ注意）: {single.map((r) => r.nameJa).join("、")}</p>}
           </li>
         ))}
       </ol>
@@ -429,6 +484,71 @@ function LightningLaneGuide() {
         </div>
       ))}
       <p className="note">ここに載っていない乗り物は、{LL_LONG.none}。対象は出発前（3月末）にもう一度確認します。</p>
+    </details>
+  );
+}
+
+/** その日に回るパークごとの地図と動線（押すと開く） */
+function DayMap({ day, rankOf, onRoute }: { day: DayPlan; rankOf: (id: string) => Rank | undefined; onRoute: () => void }) {
+  const [open, setOpen] = useState(false);
+  const parks = [...new Set([day.morningPark, day.eveningPark])];
+  if (day.items.length === 0) return null;
+  return (
+    <>
+      <button className="map-toggle" onClick={() => setOpen(!open)}>
+        🗺 {open ? "地図と動線をとじる" : "地図と動線を見る"}
+      </button>
+      {open && (
+        <>
+          {parks.map((park) => (
+            <div key={park}>
+              <p className={`plan-at park-${park}`}>📍 {parkName(park)}</p>
+              <ParkMap park={park} items={day.items.filter((i) => rideById(i.rideId)?.park === park)} rankOf={rankOf} />
+            </div>
+          ))}
+          <button className="mini" onClick={onRoute}>
+            🔁 この日の午前・午後の乗り物を「近い順」に組み直す
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+/** 事前の予約・購入が必要なもの（作戦から自動で作る）。済んだらチェック（2人で共有） */
+function ReservationPanel({ plan, checks, onCheck }: { plan: Plan; checks: Checks; onCheck: (id: string, done: boolean) => void }) {
+  const tasks = reservationTasks(plan, rideById);
+  if (tasks.length === 0) return null;
+  const left = tasks.filter((t) => checks[t.id] === undefined).length;
+  return (
+    <details className="plan-day rsv-panel" open={left > 0}>
+      <summary>
+        <strong>📅 事前の予約・購入が必要なもの</strong>
+        <span className={left > 0 ? "rsv todo" : "rsv done"}>{left > 0 ? `残り${left}件` : "すべて済み"}</span>
+      </summary>
+      <ul className="rsv-list">
+        {tasks.map((t) => {
+          const done = checks[t.id];
+          return (
+            <li key={t.id} className={done ? "is-done" : undefined}>
+              <label>
+                <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
+                <span>
+                  <strong>{t.title}</strong>
+                  <small>{t.detail}</small>
+                  <small>予約開始: {t.opens}</small>
+                  {done && (
+                    <small className="rsv-by">
+                      ✓ {done.by === "toshi" ? "Toshi" : "妻"}が対応済み（{new Date(done.at).toLocaleDateString("ja-JP")}）
+                    </small>
+                  )}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="note">作戦を変えると、この一覧も自動で変わります（チェックは残ります）。</p>
     </details>
   );
 }

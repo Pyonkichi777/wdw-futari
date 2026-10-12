@@ -13,21 +13,12 @@ import {
   type Auth,
   type User,
 } from "firebase/auth";
-import {
-  deleteDoc,
-  doc,
-  getDoc,
-  initializeFirestore,
-  onSnapshot,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-  setDoc,
-  type Firestore,
-} from "firebase/firestore";
+import { deleteDoc, deleteField, doc, getDoc, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, setDoc, type Firestore } from "firebase/firestore";
 import type { Consensus, ConsensusItem, PersonId, Rank, VoteLevel, Votes } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
 import { parsePlan } from "./plan";
+import { parseChecks } from "./checks";
 import type { AuthUser, Store } from "./store";
 
 export interface FirebaseBackend {
@@ -166,6 +157,12 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     },
     async savePlan(p) {
       await setDoc(doc(fb.db, "consensus", "plan"), JSON.parse(JSON.stringify(p)) as Record<string, unknown>);
+    },
+    subscribeChecks(cb) {
+      return onSnapshot(doc(fb.db, "consensus", "checks"), (snap) => cb(parseChecks(snap.data()?.done)));
+    },
+    async setCheck(id, done, by) {
+      await setDoc(doc(fb.db, "consensus", "checks"), { done: { [id]: done ? { by, at: Date.now() } : deleteField() } }, { merge: true });
     },
     subscribeBanner(cb) {
       return onSnapshot(

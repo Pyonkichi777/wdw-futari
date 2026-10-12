@@ -2,6 +2,7 @@ import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import type { AllVotes } from "./consensus";
 import type { AllMeals } from "./meals";
 import type { Plan } from "./plan";
+import type { Checks } from "./checks";
 
 export type Unsubscribe = () => void;
 
@@ -18,6 +19,9 @@ export interface Store {
   /** 5日間の作戦（2人で共有） */
   subscribePlan(cb: (p: Plan) => void): Unsubscribe;
   savePlan(p: Plan): Promise<void>;
+  /** 予約・購入の「済」チェック（2人で共有） */
+  subscribeChecks(cb: (c: Checks) => void): Unsubscribe;
+  setCheck(id: string, done: boolean, by: PersonId): Promise<void>;
   /** バナー写真（JPEGのdata URL）。2人だけが見られる場所に保存する。null は未設定 */
   subscribeBanner(cb: (dataUrl: string | null) => void): Unsubscribe;
   saveBanner(dataUrl: string | null): Promise<void>;

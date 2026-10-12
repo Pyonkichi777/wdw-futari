@@ -2,6 +2,7 @@ import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, type AllMeals } from "./meals";
 import { emptyPlan, type Plan } from "./plan";
+import type { Checks } from "./checks";
 import type { Store, Unsubscribe } from "./store";
 
 const VOTES_KEY = "wdw-futari:demo:votes";
@@ -9,6 +10,7 @@ const CONSENSUS_KEY = "wdw-futari:demo:consensus";
 const BANNER_KEY = "wdw-futari:demo:banner";
 const MEALS_KEY = "wdw-futari:demo:meals";
 const PLAN_KEY = "wdw-futari:demo:plan";
+const CHECKS_KEY = "wdw-futari:demo:checks";
 
 function read<T>(key: string, fallback: () => T): T {
   try {
@@ -37,6 +39,8 @@ export function createLocalStore(): Store {
   const mealListeners = new Set<(m: AllMeals) => void>();
   let plan: Plan = read(PLAN_KEY, emptyPlan);
   const planListeners = new Set<(p: Plan) => void>();
+  let checks: Checks = read<Checks>(CHECKS_KEY, () => ({}));
+  const checkListeners = new Set<(c: Checks) => void>();
   let banner: string | null = read<string | null>(BANNER_KEY, () => null);
   const bannerListeners = new Set<(b: string | null) => void>();
 
@@ -77,6 +81,15 @@ export function createLocalStore(): Store {
       plan = p;
       write(PLAN_KEY, plan);
       planListeners.forEach((l) => l(plan));
+    },
+    subscribeChecks: (cb) => listen(checkListeners, cb, checks),
+    async setCheck(id: string, done: boolean, by: PersonId) {
+      const next = { ...checks };
+      if (done) next[id] = { by, at: Date.now() };
+      else delete next[id];
+      checks = next;
+      write(CHECKS_KEY, checks);
+      checkListeners.forEach((l) => l(checks));
     },
     subscribeBanner: (cb) => listen(bannerListeners, cb, banner),
     async saveBanner(dataUrl: string | null) {

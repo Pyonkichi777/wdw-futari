@@ -2081,3 +2081,117 @@ button.glass {
   font-size: 0.86rem;
   line-height: 1.7;
 }
+
+/* ---- パークの地図と動線 */
+.park-map {
+  margin: 8px 0;
+}
+.park-map svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.pm-bg {
+  fill: #eef6ea;
+  stroke: var(--line);
+}
+.pm-dot {
+  fill: #b9b3c9;
+}
+.pm-route {
+  fill: none;
+  stroke: #3b2479;
+  stroke-width: 2.5;
+  stroke-dasharray: 6 5;
+  stroke-linejoin: round;
+}
+.pm-stop {
+  stroke: #fff;
+  stroke-width: 2;
+}
+.pm-num {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.pm-north {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .pm-bg { fill: #1d2a22; }
+  .pm-dot { fill: #5b5670; }
+  .pm-route { stroke: #ffd66b; }
+}
+.pm-legend {
+  margin: 4px 0;
+  padding-left: 1.4em;
+  font-size: 0.82rem;
+  columns: 2;
+  column-gap: 16px;
+}
+.map-toggle {
+  margin-top: 8px;
+  width: 100%;
+}
+.plan-votes {
+  flex-basis: 100%;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.rsv {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.rsv.todo { background: #ffe0e6; color: #b3123d; }
+.rsv.done { background: #dff5e7; color: #1d7a45; }
+@media (prefers-color-scheme: dark) {
+  .rsv.todo { background: #4a1724; color: #ffb3c2; }
+  .rsv.done { background: #173f2c; color: #9fe0b5; }
+}
+.rsv-panel summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rsv-list {
+  list-style: none;
+  margin: 10px 0 4px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.rsv-list label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.rsv-list input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex: none;
+}
+.rsv-list span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rsv-list small {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.rsv-list .is-done strong {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.rsv-by {
+  color: #1d7a45 !important;
+  font-weight: 700;
+}
