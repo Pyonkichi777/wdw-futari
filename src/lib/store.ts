@@ -17,8 +17,13 @@ export interface Store {
   subscribeConsensus(cb: (c: Consensus) => void): Unsubscribe;
   saveConsensus(c: Consensus): Promise<void>;
   /** 5日間の作戦（2人で共有） */
-  subscribePlan(cb: (p: Plan) => void): Unsubscribe;
-  savePlan(p: Plan): Promise<void>;
+  /** pending = 自分の変更がまだサーバーに届いていない（電波待ち） */
+  subscribePlan(cb: (p: Plan, pending: boolean) => void): Unsubscribe;
+  /**
+   * 作戦を変える。いちばん新しい作戦（相手の変更を含む）に対して change を当てて保存するので、
+   * 2人が同時に操作しても相手の変更を消さない。圏外のときは端末に保存し、つながったら送る
+   */
+  updatePlan(change: (p: Plan) => Plan): Promise<void>;
   /** 予約・購入の「済」チェック（2人で共有） */
   subscribeChecks(cb: (c: Checks) => void): Unsubscribe;
   setCheck(id: string, done: boolean, by: PersonId): Promise<void>;

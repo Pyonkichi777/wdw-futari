@@ -50,6 +50,20 @@ export function createLocalStore(): Store {
     return () => set.delete(cb);
   };
 
+  // お試しモードでも、同じ端末の別のタブ・ウィンドウと作戦とチェックを同期する
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", (e) => {
+      if (e.key === PLAN_KEY) {
+        plan = read(PLAN_KEY, emptyPlan);
+        planListeners.forEach((l) => l(plan));
+      }
+      if (e.key === CHECKS_KEY) {
+        checks = read<Checks>(CHECKS_KEY, () => ({}));
+        checkListeners.forEach((l) => l(checks));
+      }
+    });
+  }
+
   return {
     subscribeVotes: (cb) => listen(voteListeners, cb, votes),
     async setVote(person: PersonId, rideId: string, level: VoteLevel) {
@@ -76,9 +90,10 @@ export function createLocalStore(): Store {
       write(CONSENSUS_KEY, consensus);
       consensusListeners.forEach((l) => l(consensus));
     },
-    subscribePlan: (cb) => listen(planListeners, cb, plan),
-    async savePlan(p: Plan) {
-      plan = p;
+    subscribePlan: (cb) => listen<Plan>(planListeners, (p) => cb(p, false), plan),
+    async updatePlan(change: (p: Plan) => Plan) {
+      // ほかのタブで変わっていれば、それに当てる
+      plan = change(read(PLAN_KEY, emptyPlan));
       write(PLAN_KEY, plan);
       planListeners.forEach((l) => l(plan));
     },

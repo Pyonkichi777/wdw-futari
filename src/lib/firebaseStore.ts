@@ -13,7 +13,7 @@ import {
   type Auth,
   type User,
 } from "firebase/auth";
-import { deleteDoc, deleteField, doc, getDoc, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, setDoc, type Firestore } from "firebase/firestore";
+import { deleteDoc, deleteField, doc, getDoc, getDocFromCache, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, runTransaction, setDoc, type Firestore } from "firebase/firestore";
 import type { Consensus, ConsensusItem, PersonId, Rank, VoteLevel, Votes } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
@@ -153,10 +153,22 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     },
     // 作戦は合意リストと同じ consensus コレクションに置く（セキュリティルールの追加が要らない）
     subscribePlan(cb) {
-      return onSnapshot(doc(fb.db, "consensus", "plan"), (snap) => cb(parsePlan(snap.data())));
+      return onSnapshot(doc(fb.db, "consensus", "plan"), { includeMetadataChanges: true }, (snap) => cb(parsePlan(snap.data()), snap.metadata.hasPendingWrites));
     },
-    async savePlan(p) {
-      await setDoc(doc(fb.db, "consensus", "plan"), JSON.parse(JSON.stringify(p)) as Record<string, unknown>);
+    async updatePlan(change) {
+      const ref = doc(fb.db, "consensus", "plan");
+      const plain = (p: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
+      try {
+        // サーバーの最新の作戦に変更を当てる（相手が同時に変えた分を消さない）
+        await runTransaction(fb.db, async (tx) => {
+          const latest = parsePlan((await tx.get(ref)).data());
+          tx.set(ref, plain(change(latest)));
+        });
+      } catch {
+        // 圏外などでサーバーに届かないときは、端末にある最新に当てて保存（つながったら自動で送られる）
+        const cached = await getDocFromCache(ref).catch(() => null);
+        void setDoc(ref, plain(change(parsePlan(cached?.data())))).catch(() => undefined);
+      }
     },
     subscribeChecks(cb) {
       return onSnapshot(doc(fb.db, "consensus", "checks"), (snap) => cb(parseChecks(snap.data()?.done)));

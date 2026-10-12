@@ -2286,3 +2286,14 @@ button.glass {
   margin-top: 8px;
   width: 100%;
 }
+.sync {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.sync.ok { color: #1d7a45; }
+.sync.pending { color: #b36b00; }
+@media (prefers-color-scheme: dark) {
+  .sync.ok { color: #9fe0b5; }
+  .sync.pending { color: #ffd27a; }
+}

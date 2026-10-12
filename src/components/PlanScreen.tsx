@@ -38,7 +38,10 @@ interface Props {
   me: PersonId;
   consensus: Consensus;
   plan: Plan;
-  onSave: (p: Plan) => void;
+  /** 最新の作戦に変更を当てて保存する（2人の同時操作でも相手の変更を消さない） */
+  onUpdate: (change: (p: Plan) => Plan) => void;
+  /** 自分の変更がまだ相手に届いていない（電波待ち） */
+  pending: boolean;
   votes: AllVotes;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
@@ -62,11 +65,11 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck }: Props) {
+export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const today = todayInOrlando();
-  const save = (p: Plan): void => onSave({ ...p, updatedBy: me, updatedAt: Date.now() });
+  const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...change(p), updatedBy: me, updatedAt: Date.now() }));
   const rankOf = (id: string): Rank | undefined => consensus.items.find((c) => c.rideId === id)?.rank;
 
   if (!consensus.confirmed || consensus.items.length === 0) {
@@ -80,11 +83,18 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
     );
   }
 
-  const [focus, setFocus] = useState<ParkId | "">(plan.focusPark ?? "AK");
-  const generate = (): void => {
-    const p = buildPlan(consensus.items, rideById, TRIP.parkDays, focus ? { focusPark: focus } : {});
-    save({ ...p, days: p.days.map(routeDay) });
-  };
+  // 本命パークも2人で共有（作戦と一緒に保存）
+  const focus: ParkId | "" = plan.focusPark ?? (plan.days.length === 0 ? "AK" : "");
+  const setFocus = (f: ParkId | ""): void =>
+    save((p) => {
+      const { focusPark: _old, ...rest } = p;
+      return f ? { ...rest, focusPark: f } : rest;
+    });
+  const generate = (): void =>
+    save(() => {
+      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, focus ? { focusPark: focus } : {});
+      return { ...p, days: p.days.map(routeDay) };
+    });
   const voteText = (r: Ride): string | null => {
     const t = votes.toshi[r.id];
     const w = votes.tsuma[r.id];
@@ -114,7 +124,7 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
     const ids = lowIds(date);
     if (ids.size === 0) return;
     if (window.confirm(`2人とも「どちらでも」の${ids.size}件を${date ? "この日の" : "すべての日の"}作戦から外します。外したものは下の「どの日にも入っていないもの」から戻せます。よろしいですか？`)) {
-      save(removeItems(plan, ids, date));
+      save((p) => removeItems(p, ids, date));
     }
   };
   const warnings = checkPlan(plan, consensus.items, rideById);
@@ -124,6 +134,7 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
   return (
     <section className="plan">
       <h2>5日間の作戦</h2>
+      <p className={pending ? "sync pending" : "sync ok"}>{pending ? "⏳ 送信待ち（電波が戻ると自動で相手に届きます）" : "☁ 2人で同期済み（どちらのスマホで変えても、もう一方にすぐ反映）"}</p>
       {plan.updatedBy && plan.updatedAt && (
         <p className="note">
           最終更新: {plan.updatedBy === "toshi" ? "Toshi" : "妻"}（{new Date(plan.updatedAt).toLocaleString("ja-JP")}）
@@ -166,17 +177,17 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
           lowCount={lowIds(d.date).size}
           onRemoveLow={() => removeLow(d.date)}
           checks={checks}
-          onRoute={() => save({ ...plan, days: plan.days.map((x) => (x.date === d.date ? routeDay(x) : x)) })}
+          onRoute={() => save((p) => ({ ...p, days: p.days.map((x) => (x.date === d.date ? routeDay(x) : x)) }))}
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
-          onParks={(parks) => save(setDayParks(plan, d.date, parks))}
+          onParks={(parks) => save((p) => setDayParks(p, d.date, parks))}
           onMove={(id, to) => {
-            save(moveItem(plan, id, to));
+            save((p) => moveItem(p, id, to));
             setEditing(null);
           }}
           onRemove={(id) => {
-            save(removeItem(plan, id));
+            save((p) => removeItem(p, id));
             setEditing(null);
           }}
           days={plan.days}
@@ -199,7 +210,7 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
                       days={plan.days}
                       current={null}
                       onMove={(to) => {
-                        save(moveItem(plan, r.id, to));
+                        save((p) => moveItem(p, r.id, to));
                         setEditing(null);
                       }}
                     />

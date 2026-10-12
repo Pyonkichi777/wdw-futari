@@ -132,7 +132,15 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   const [checks, setChecks] = useState<Checks>({});
   useEffect(() => store.subscribeChecks(setChecks), [store]);
   const [plan, setPlan] = useState<Plan>(emptyPlan);
-  useEffect(() => store.subscribePlan(setPlan), [store]);
+  const [planPending, setPlanPending] = useState(false);
+  useEffect(
+    () =>
+      store.subscribePlan((p, pending) => {
+        setPlan(p);
+        setPlanPending(pending);
+      }),
+    [store],
+  );
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -195,7 +203,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             me={me}
             consensus={consensus}
             plan={plan}
-            onSave={(p) => store.savePlan(p).catch(report)}
+            onUpdate={(change) => store.updatePlan(change).catch(report)}
+            pending={planPending}
             votes={votes}
             checks={checks}
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
