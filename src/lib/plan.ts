@@ -36,6 +36,10 @@ export interface Plan {
   /** 作戦から外したもの。作り直しても入れない。2人で共有 */
   excluded?: ExcludedItem[];
   /** 本命パーク（いちばん空いている日に置く） */
+  /** 「2人ともどちらでも」をまとめて外した（以後、作り直しても入れない） */
+  dropLow?: true;
+  /** dropLow のあとで、自分たちで元に戻したもの（これは外さない） */
+  keptLow?: string[];
   /** 本命パークの優先順位（第1優先から）。2人で共有 */
   focusParks?: ParkId[];
   updatedBy: PersonId | null;
@@ -286,6 +290,11 @@ export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: S
   return { ...withExcluded(plan, excluded), days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
 }
 
+export const withKept = (plan: Plan, kept: string[]): Plan => {
+  const { keptLow: _old, ...rest } = plan;
+  return kept.length > 0 ? { ...rest, keptLow: kept } : rest;
+};
+
 const withExcluded = (plan: Plan, excluded: ExcludedItem[]): Plan => {
   const { excluded: _old, ...rest } = plan;
   return excluded.length > 0 ? { ...rest, excluded } : rest;
@@ -302,7 +311,7 @@ export function removeItems(plan: Plan, rideIds: ReadonlySet<string>, date?: str
     return hit.length > 0 ? { ...d, items: d.items.filter((i) => !rideIds.has(i.rideId)) } : d;
   });
   const keep = (plan.excluded ?? []).filter((e) => !removed.some((r) => r.rideId === e.rideId));
-  return { ...withExcluded(plan, [...keep, ...removed]), days };
+  return withKept({ ...withExcluded(plan, [...keep, ...removed]), days }, (plan.keptLow ?? []).filter((id) => !rideIds.has(id)));
 }
 
 export const removeItem = (plan: Plan, rideId: string, by: PersonId | null = null): Plan => removeItems(plan, new Set([rideId]), undefined, by);
@@ -320,7 +329,7 @@ export function restoreItem(plan: Plan, rideId: string, parkOf?: (id: string) =>
   const target = (original && fits(original) ? original : plan.days.find(fits)) ?? original ?? plan.days[0];
   const rest = (plan.excluded ?? []).filter((e) => e.rideId !== rideId);
   if (!target) return withExcluded(plan, rest);
-  const item: PlanItem = { rideId, slot: target.date === ex.date ? ex.slot : "am", method: ex.method, ...(ex.suggested ? { suggested: true } : {}) };
+  const item: PlanItem = { rideId, slot: target.date === ex.date || ex.method === "meal" || ex.method === "show" ? ex.slot : "am", method: ex.method, ...(ex.suggested ? { suggested: true } : {}) };
   return {
     ...withExcluded(plan, rest),
     days: plan.days.map((d) => (d.date === target.date ? { ...d, items: sortItems([...d.items.filter((i) => i.rideId !== rideId), item]) } : d)),
@@ -384,6 +393,8 @@ export function parsePlan(data: unknown): Plan {
     days,
     ...(excluded.length > 0 ? { excluded } : {}),
     ...(focusParks.length > 0 ? { focusParks } : {}),
+    ...(d.dropLow === true ? { dropLow: true as const } : {}),
+    ...(Array.isArray(d.keptLow) && d.keptLow.some((x: unknown) => typeof x === "string") ? { keptLow: d.keptLow.filter((x: unknown): x is string => typeof x === "string") } : {}),
     updatedBy: d.updatedBy === "toshi" || d.updatedBy === "tsuma" ? d.updatedBy : null,
     updatedAt: typeof d.updatedAt === "number" ? d.updatedAt : null,
   };

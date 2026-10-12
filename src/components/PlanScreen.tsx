@@ -19,6 +19,7 @@ import {
   restoreItem,
   setDayParks,
   unplaced,
+  withKept,
   type DayPlan,
   type Method,
   type Plan,
@@ -26,8 +27,9 @@ import {
   type Slot,
 } from "../lib/plan";
 import { checkPlan, fixAllReds } from "../lib/planChecks";
+import { clock, dayTimes } from "../lib/bookTimes";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo } from "../lib/crowd";
-import { applyFix } from "../lib/planFixes";
+import { applyFix, excludeAllLow } from "../lib/planFixes";
 import { routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
@@ -99,9 +101,15 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
     });
   const generate = (): void =>
     save((cur) => {
-      // 外したものは作り直しても入れない（記録も引き継ぐ）
-      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, ...(cur.excluded ? { excluded: cur.excluded } : {}) });
-      return { ...p, days: p.days.map(routeDay) };
+      // 外したものは作り直しても入れない（記録も引き継ぐ）。「どちらでも」をまとめて外した後なら、それも入れない
+      const base = cur.dropLow ? excludeAllLow(cur, consensus.items, (id) => isLowPriority(votes, id), rideById, me) : cur;
+      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, ...(base.excluded ? { excluded: base.excluded } : {}) });
+      return {
+        ...p,
+        days: p.days.map(routeDay),
+        ...(base.dropLow ? { dropLow: true as const } : {}),
+        ...(base.keptLow ? { keptLow: base.keptLow } : {}),
+      };
     });
   const voteText = (r: Ride): string | null => {
     const t = votes.toshi[r.id];
@@ -130,15 +138,23 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
     new Set(plan.days.filter((d) => !date || d.date === date).flatMap((d) => d.items.map((i) => i.rideId)).filter(isLow));
   const removeLow = (date?: string): void => {
     const ids = lowIds(date);
-    if (ids.size === 0) return;
-    if (window.confirm(`2人とも「どちらでも」の${ids.size}件を${date ? "この日の" : "すべての日の"}作戦から外します。外したものは下の「🗑 外したもの」に記録され、2人で共有されます。いつでも元に戻せます。よろしいですか？`)) {
-      save((p) => removeItems(p, ids, date, me));
+    if (ids.size === 0 && (date || plan.dropLow)) return;
+    if (date) {
+      if (window.confirm(`2人とも「どちらでも」の${ids.size}件をこの日の作戦から外します。外したものは下の「🗑 外したもの」に記録され、2人で共有されます。作り直しても戻りません（自分で戻すことはできます）。よろしいですか？`)) {
+        save((p) => removeItems(p, ids, date, me));
+      }
+      return;
+    }
+    if (window.confirm(`2人とも「どちらでも」を、すべての日の作戦から外します（今入っている${ids.size}件と、どの日にも入っていないものも）。今後は作り直しても、優先順位を変えても入りません。外したものは「🗑 外したもの」に記録され、1つずつ元に戻せます。よろしいですか？`)) {
+      save((p) => excludeAllLow(p, consensus.items, isLow, rideById, me));
     }
   };
   const warnings = checkPlan(plan, consensus.items, rideById);
   const reds = warnings.filter((w) => w.level === "red");
   const fixableReds = reds.filter((w) => w.fix).length;
-  const left = unplaced(plan, consensus.items);
+  const kept = new Set(plan.keptLow ?? []);
+  // 「どちらでも」をまとめて外した後は、新しく「どちらでも」になったものも作戦に出さない（次の作り直しで記録される）
+  const left = unplaced(plan, consensus.items).filter((c) => !(plan.dropLow && isLow(c.rideId) && !kept.has(c.rideId)));
 
   return (
     <section className="plan">
@@ -206,6 +222,11 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           </button>
         </div>
       )}
+      {plan.dropLow && (
+        <div className="low-bar off">
+          <span>💤 「2人ともどちらでも」は外したままにする設定です（作り直しても、優先順位を変えても入りません）。戻したいものは「🗑 外したもの」から1つずつ戻せます</span>
+        </div>
+      )}
 
       {plan.days.map((d) => (
         <DayCard
@@ -266,7 +287,14 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
         </details>
       )}
 
-      <ExcludedList plan={plan} rankOf={rankOf} onRestore={(ids) => save((p) => ids.reduce((acc, id) => restoreItem(acc, id, (x) => rideById(x)?.park), p))} />
+      <ExcludedList plan={plan} rankOf={rankOf} onRestore={(ids) =>
+          save((p) => {
+            const restored = ids.reduce((acc, id) => restoreItem(acc, id, (x) => rideById(x)?.park), p);
+            // 自分で戻した「どちらでも」は、作り直しても外さない
+            const back = ids.filter(isLow);
+            return back.length > 0 ? withKept(restored, [...new Set([...(restored.keptLow ?? []), ...back])]) : restored;
+          })
+        } />
 
       <LightningLaneSheet plan={plan} />
       <LightningLaneGuide />
@@ -347,13 +375,14 @@ function DayCard({
       <DayTimeline
         day={day}
         here={here}
-        render={(it, r, minutes) => (
+        render={(it, r, minutes, time) => (
           <>
             <ItemRow
               ride={r}
               rank={rankOf(r.id)}
               item={it}
               minutes={minutes}
+              time={time}
               votes={voteText(r)}
               low={isLow(r.id)}
               onQuickRemove={() => onRemove(r.id)}
@@ -377,13 +406,19 @@ function DayCard({
 }
 
 /** 1日の流れ: 📍パーク → 項目（所要時間つき）→ 🚌移動 → … */
-function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTEL" | null; render: (it: PlanItem, r: Ride, minutes: number) => ReactNode }) {
+function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTEL" | null; render: (it: PlanItem, r: Ride, minutes: number, time: string | undefined) => ReactNode }) {
   const { segments, totalMinutes } = dayTimeline(day, rideById);
+  const times = dayTimes(day, rideById);
+  const early = day.items.some((i) => i.method === "early");
   let lastSlot: Slot | null = null;
   return (
     <>
       <p className={totalMinutes > DAY_LIMIT_MINUTES ? "plan-total over" : "plan-total"}>
         ⏱ 合計 {hoursText(totalMinutes)}（移動込みの目安）{totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
+      </p>
+      <p className="plan-clock">
+        {day.items.length > 0 ? `🕗 ${clock(times.start)} パーク着（${early ? "開園前入園" : "開園"}）→ 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着` : "🕗 まだ予定がありません"}
+        <small>時刻は目安。予約の「選ぶ時間枠」と同じ計算です（開園は9:00と仮定）</small>
       </p>
       <ul className="plan-items timeline">
         {segments.map((seg, i) => {
@@ -408,7 +443,7 @@ function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTE
           return (
             <li key={seg.item.rideId} id={`pi-${day.date}-${seg.item.rideId}`}>
               {showSlot && <p className="plan-slot-label">{SLOT_LABEL[seg.item.slot]}</p>}
-              {render(seg.item, seg.ride, seg.minutes)}
+              {render(seg.item, seg.ride, seg.minutes, times.hints.get(seg.ride.id)?.text)}
             </li>
           );
         })}
@@ -422,6 +457,7 @@ function ItemRow({
   rank,
   item,
   minutes,
+  time,
   votes,
   reserved,
   low = false,
@@ -433,6 +469,7 @@ function ItemRow({
   rank: Rank | undefined;
   item: PlanItem | null;
   minutes?: number;
+  time?: string | undefined;
   votes?: string | null;
   reserved?: boolean;
   low?: boolean;
@@ -442,6 +479,7 @@ function ItemRow({
 }) {
   const row = (
     <button className={low ? "plan-item low" : "plan-item"} onClick={onClick}>
+      {time && <span className="plan-time">🕐 {time}</span>}
       {low && <span className="low-tag">💤 優先度低</span>}
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
@@ -915,7 +953,7 @@ function ExcludedList({ plan, rankOf, onRestore }: { plan: Plan; rankOf: (id: st
               <div>
                 {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>} <strong>{r.nameJa}</strong>
                 <small>
-                  元: {dayLabel(e.date)} {SLOT_NAMES[e.slot]}
+                  {e.date ? `元: ${dayLabel(e.date)} ${SLOT_NAMES[e.slot]}` : "どの日にも入っていなかったもの（まとめて外した）"}
                   {e.by && `・${e.by === "toshi" ? "Toshi" : "妻"}が外した`}
                   {e.at > 0 && `（${new Date(e.at).toLocaleDateString("ja-JP")}）`}
                 </small>

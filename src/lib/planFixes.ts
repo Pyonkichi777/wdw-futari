@@ -1,7 +1,7 @@
 import { parkName } from "../data/parks";
 import { ITINERARY, TRIP } from "../data/trip";
-import type { MealPeriod, ParkId, Rank, Ride } from "../types";
-import { METHOD_LABEL, SLOT_LABEL, moveItem, setDayParks, type DayPlan, type Method, type Plan, type Slot } from "./plan";
+import type { ConsensusItem, MealPeriod, ParkId, PersonId, Rank, Ride } from "../types";
+import { METHOD_LABEL, SLOT_LABEL, moveItem, removeItems, setDayParks, type DayPlan, type ExcludedItem, type Method, type Plan, type Slot } from "./plan";
 
 /** 警告を直すための提案（ボタンひとつで当てられる） */
 export type Fix =
@@ -87,3 +87,22 @@ export function fixMethod(d: DayPlan, r: Ride, slot: Slot, method: Method, why: 
 
 export const RANK_ORDER: Record<Rank, number> = { S: 0, A: 1, B: 2 };
 
+
+/**
+ * 「2人ともどちらでも」を全部外す。日に入っているものに加え、どの日にも入っていないものも「外したもの」に記録し、
+ * dropLow を立てる（以後、作り直しても入れない。自分たちで元に戻したもの keptLow は除く）
+ */
+export function excludeAllLow(plan: Plan, consensus: readonly ConsensusItem[], isLow: (id: string) => boolean, rideById: (id: string) => Ride | undefined, by: PersonId | null): Plan {
+  const kept = new Set(plan.keptLow ?? []);
+  const low = new Set(consensus.map((c) => c.rideId).filter((id) => isLow(id) && !kept.has(id)));
+  const removed = removeItems(plan, low, undefined, by);
+  const already = new Set((removed.excluded ?? []).map((e) => e.rideId));
+  const at = Date.now();
+  const extra: ExcludedItem[] = consensus.flatMap((c): ExcludedItem[] => {
+    const r = rideById(c.rideId);
+    if (!r || !low.has(c.rideId) || already.has(c.rideId)) return [];
+    const slot: Slot = r.dining ? MEAL_SLOT[c.meal ?? r.dining.meals[0] ?? "lunch"] : r.kind === "night" ? "night" : "pm";
+    return [{ rideId: c.rideId, date: "", slot, method: bestMethod(r, undefined, rideById), by, at }];
+  });
+  return { ...removed, ...(extra.length > 0 || removed.excluded ? { excluded: [...(removed.excluded ?? []), ...extra] } : {}), dropLow: true };
+}

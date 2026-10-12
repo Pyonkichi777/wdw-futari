@@ -2605,3 +2605,22 @@ ol.rsv-list {
   color: var(--muted);
   font-size: 0.72rem;
 }
+
+/* 作戦: 各項目の目安時刻 */
+.plan-time {
+  flex: 1 0 100%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.plan-clock {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.plan-clock small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--muted);
+}

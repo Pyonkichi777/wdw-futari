@@ -7,6 +7,7 @@ import { dayTimeline } from "./timing";
  * - 開園 9:00（開園前入園がある日は 8:30）にパークに着く想定で、所要時間を順に足していく
  * - 食事は混む時間を避ける: 朝食 8:00頃・昼食 11:30頃（遅くとも13:30）・夕食 17:30頃（遅くとも19:00）
  * - 時短パスは1時間の枠で示す（その時刻に乗れる枠。前後の枠でもよい）
+ * - 夜のショーは 20:30 頃から（場所取りを含む）
  * 開園時間は2027年5月分が出たら確かめ直す
  */
 const OPEN = 9 * 60;
@@ -23,11 +24,15 @@ export interface TimeHint {
   text: string;
 }
 
-export function timeHints(day: DayPlan, rideById: (id: string) => Ride | undefined): Map<string, TimeHint> {
+export const timeHints = (day: DayPlan, rideById: (id: string) => Ride | undefined): Map<string, TimeHint> => dayTimes(day, rideById).hints;
+
+/** 1日の時刻の目安: パークに着く時刻・各項目の時刻・ホテルに戻る時刻 */
+export function dayTimes(day: DayPlan, rideById: (id: string) => Ride | undefined): { start: number; end: number; hints: Map<string, TimeHint> } {
   const out = new Map<string, TimeHint>();
   const { segments } = dayTimeline(day, rideById);
   const hasEarly = day.items.some((i) => i.method === "early");
-  let t = hasEarly ? EARLY_OPEN : OPEN;
+  const start = hasEarly ? EARLY_OPEN : OPEN;
+  let t = start;
   let arrived = false;
   for (const seg of segments) {
     if (seg.type === "travel") {
@@ -48,6 +53,13 @@ export function timeHints(day: DayPlan, rideById: (id: string) => Ride | undefin
       t = Math.max(t, at) + minutes;
       continue;
     }
+    if (ride.kind === "night") {
+      // 夜のショー（花火など）は暗くなってから。場所取りを含めて 20:30 頃から
+      const at = Math.max(round30(t), 20 * 60 + 30);
+      out.set(ride.id, { at, text: `${clock(at)}頃（上演時刻は当日アプリで確認）` });
+      t = at + minutes;
+      continue;
+    }
     if (item.method === "multi" || item.method === "multiExtra" || item.method === "single") {
       const from = Math.floor(t / 30) * 30;
       out.set(ride.id, { at: from, text: `${clock(from)}〜${clock(from + 60)}の枠` });
@@ -56,5 +68,5 @@ export function timeHints(day: DayPlan, rideById: (id: string) => Ride | undefin
     }
     t += minutes;
   }
-  return out;
+  return { start, end: t, hints: out };
 }
