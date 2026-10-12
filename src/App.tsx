@@ -1,3 +1,4 @@
+import { fetchCrowdFeed, type CrowdFeed } from "./lib/crowd";
 import { useEffect, useMemo, useState } from "react";
 import { ConsensusScreen } from "./components/ConsensusScreen";
 import { BannerButton } from "./components/BannerButton";
@@ -141,6 +142,18 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       }),
     [store],
   );
+  // 混雑予想サイトから取り込んだ値（public/crowd.json。まだ無ければ一般的な傾向から推定）
+  const [crowd, setCrowd] = useState<CrowdFeed | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchCrowdFeed().then(
+      (f) => alive && setCrowd(f),
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -244,6 +257,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             checks={checks}
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
             onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
+            crowd={crowd}
           />
         )}
         {tab === "news" && <NewsScreen />}

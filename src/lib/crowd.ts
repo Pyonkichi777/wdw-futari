@@ -27,11 +27,66 @@ export interface CrowdInfo {
   score: number;
   level: CrowdLevel;
   reasons: string[];
+  /** data = 混雑予想サイトの値（public/crowd.json）／estimate = 一般的な傾向からの推定 */
+  basis: "data" | "estimate";
 }
+
+/**
+ * 混雑予想サイトから取り込んだ値（public/crowd.json）。日付ごと・パークごとに 1（空いている）〜10（とても混む）。
+ * 取り込みは定期実行（Routine）が行う。値がない日・パークは一般的な傾向から推定する
+ */
+export interface CrowdFeed {
+  source: { name: string; url: string };
+  /** 取得した日（YYYY-MM-DD） */
+  fetchedAt: string;
+  /** 値の意味の説明（例: 「Thrill Data の予想混雑度（1〜10）」） */
+  method: string;
+  days: Record<string, Partial<Record<ParkId, number>>>;
+}
+
+const PARK_KEYS: readonly ParkId[] = ["MK", "EP", "HS", "AK"];
+
+/** crowd.json を読み取る（壊れた値は捨てる。使える値が1つもなければ null） */
+export function parseCrowdFeed(data: unknown): CrowdFeed | null {
+  if (typeof data !== "object" || data === null) return null;
+  const o = data as Record<string, unknown>;
+  const src = (typeof o.source === "object" && o.source !== null ? o.source : {}) as Record<string, unknown>;
+  if (typeof src.name !== "string" || typeof src.url !== "string" || !src.url.startsWith("https://")) return null;
+  const rawDays = (typeof o.days === "object" && o.days !== null ? o.days : {}) as Record<string, unknown>;
+  const days: CrowdFeed["days"] = {};
+  for (const [date, v] of Object.entries(rawDays)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || typeof v !== "object" || v === null) continue;
+    const row: Partial<Record<ParkId, number>> = {};
+    for (const k of PARK_KEYS) {
+      const n = (v as Record<string, unknown>)[k];
+      if (typeof n === "number" && n >= 1 && n <= 10) row[k] = n;
+    }
+    if (Object.keys(row).length > 0) days[date] = row;
+  }
+  if (Object.keys(days).length === 0) return null;
+  return { source: { name: src.name, url: src.url }, fetchedAt: typeof o.fetchedAt === "string" ? o.fetchedAt : "", method: typeof o.method === "string" ? o.method : "", days };
+}
+
+/** public/crowd.json を読む（まだ無ければ null） */
+export async function fetchCrowdFeed(): Promise<CrowdFeed | null> {
+  const res = await fetch(`${import.meta.env.BASE_URL}crowd.json?t=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return parseCrowdFeed(await res.json().catch(() => null));
+}
+
+/** 1〜10 の値 → 段階（推定の点数と同じ物差しに直す） */
+const levelOf10 = (v: number): CrowdLevel => (v <= 3 ? "low" : v <= 5 ? "mid" : v <= 7 ? "high" : "peak");
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
-export function crowdInfo(park: ParkId, iso: string): CrowdInfo {
+export function crowdInfo(park: ParkId, iso: string, feed?: CrowdFeed | null): CrowdInfo {
+  const v = feed?.days[iso]?.[park];
+  if (feed && v !== undefined) {
+    const reasons = [`${feed.source.name}の予想 ${v}/10`];
+    if (park === "HS" && iso === STAR_WARS_DAY) reasons.push("スター・ウォーズの日");
+    // 推定の点数（だいたい1.3〜8）と同じくらいの幅にそろえる
+    return { score: v * 0.8, level: levelOf10(v), reasons, basis: "data" };
+  }
   const wd = weekday(iso);
   let score = (DAY_CROWD[wd] ?? 3) + PARK_ADJ[park];
   const reasons: string[] = [];
@@ -51,9 +106,9 @@ export function crowdInfo(park: ParkId, iso: string): CrowdInfo {
   if (PARK_ADJ[park] > 0) reasons.push("人気パーク");
   if (PARK_ADJ[park] < 0) reasons.push("比較的すいているパーク");
   const level: CrowdLevel = score < 2.5 ? "low" : score < 3.6 ? "mid" : score < 5 ? "high" : "peak";
-  return { score, level, reasons };
+  return { score, level, reasons, basis: "estimate" };
 }
 
-export const crowdScore = (park: ParkId, iso: string): number => crowdInfo(park, iso).score;
+export const crowdScore = (park: ParkId, iso: string, feed?: CrowdFeed | null): number => crowdInfo(park, iso, feed).score;
 
 export const CROWD_SOURCE = { label: "Magic Tips（2027年5月の混雑予想）", url: "https://magic-tips.app/en/crowd-calendar/walt-disney-world/2027/may" };

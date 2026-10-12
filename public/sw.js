@@ -49,8 +49,8 @@ self.addEventListener("fetch", (e) => {
   }
   if (url.origin !== self.location.origin) return;
   // ニュースは毎朝更新されるので、つながるときは必ず最新を取りに行く（圏外なら最後に読んだもの）
-  if (url.pathname.endsWith("/news.json")) {
-    const key = new Request(new URL("news.json", self.registration.scope).href);
+  if (url.pathname.endsWith("/news.json") || url.pathname.endsWith("/crowd.json")) {
+    const key = new Request(new URL(url.pathname.endsWith("/news.json") ? "news.json" : "crowd.json", self.registration.scope).href);
     e.respondWith(
       fetch(req)
         .then((res) => {

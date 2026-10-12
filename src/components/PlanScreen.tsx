@@ -28,7 +28,7 @@ import {
 } from "../lib/plan";
 import { checkPlan, fixAllReds } from "../lib/planChecks";
 import { clock, dayTimes } from "../lib/bookTimes";
-import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo } from "../lib/crowd";
+import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow } from "../lib/planFixes";
 import { routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
@@ -53,6 +53,8 @@ interface Props {
   onCheck: (id: string, done: boolean) => void;
   /** 図鑑でそのアトラクション・店を見る（anchor = 戻ってきたときに表示する場所） */
   onZukan: (rideId: string, anchor: string) => void;
+  /** 混雑予想サイトから取り込んだ値（まだ無ければ null） */
+  crowd: CrowdFeed | null;
 }
 
 const parkDayLabels = ITINERARY.filter((d) => d.park).map((d) => d.date);
@@ -73,7 +75,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck, onZukan }: Props) {
+export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck, onZukan, crowd }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -103,7 +105,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
     save((cur) => {
       // 外したものは作り直しても入れない（記録も引き継ぐ）。「どちらでも」をまとめて外した後なら、それも入れない
       const base = cur.dropLow ? excludeAllLow(cur, consensus.items, (id) => isLowPriority(votes, id), rideById, me) : cur;
-      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, ...(base.excluded ? { excluded: base.excluded } : {}) });
+      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, crowd, ...(base.excluded ? { excluded: base.excluded } : {}) });
       return {
         ...p,
         days: p.days.map(routeDay),
@@ -124,7 +126,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
         <h2>5日間の作戦</h2>
         <div className="empty-state">
           <p>確定した合意リストから、おすすめの5日間の作戦を自動で組みます。そのあと2人で手直しできます。</p>
-          <FocusPicker value={focusParks} onChange={setFocusParks} plan={null} />
+          <FocusPicker value={focusParks} onChange={setFocusParks} plan={null} crowd={crowd} />
           <button className="primary wide" onClick={generate}>
             合意リストからおすすめの作戦を作る
           </button>
@@ -201,7 +203,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           <strong>⭐ 本命パークの優先順位と混雑予想</strong>
           <span className="note">{focusParks.length > 0 ? focusParks.map((p, i) => `${i + 1}.${PARK_SHORT[p]}`).join(" ") : "未設定"}</span>
         </summary>
-        <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} />
+        <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} crowd={crowd} />
         <button
           className="primary wide"
           onClick={() => {
@@ -252,6 +254,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
             setEditing(null);
           }}
           onZukan={onZukan}
+          crowd={crowd}
           days={plan.days}
         />
       ))}
@@ -320,6 +323,7 @@ function DayCard({
   onMove,
   onRemove,
   onZukan,
+  crowd,
 }: {
   day: DayPlan;
   days: readonly DayPlan[];
@@ -337,6 +341,7 @@ function DayCard({
   onMove: (id: string, to: { date: string; slot: Slot; method: Method }) => void;
   onRemove: (id: string) => void;
   onZukan: (rideId: string, anchor: string) => void;
+  crowd: CrowdFeed | null;
 }) {
   const isReserve = day.date === TRIP.parkDays[TRIP.parkDays.length - 1];
   return (
@@ -347,7 +352,7 @@ function DayCard({
           {isReserve && <span className="plan-tag">予備日</span>}
           {needsMultiPass(day) && <span className="plan-tag mp">Multi Pass</span>}
         </h3>
-        <CrowdBadge park={day.morningPark} date={day.date} />
+        <CrowdBadge park={day.morningPark} date={day.date} crowd={crowd} />
         <div className="plan-parks">
           <label>
             朝
@@ -848,11 +853,11 @@ function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]
 
 const STEP_NO = ["①", "②", "③", "④", "⑤", "⑥"];
 
-function CrowdBadge({ park, date }: { park: ParkId; date: string }) {
-  const c = crowdInfo(park, date);
+function CrowdBadge({ park, date, crowd }: { park: ParkId; date: string; crowd: CrowdFeed | null }) {
+  const c = crowdInfo(park, date, crowd);
   return (
     <p className={`crowd-badge crowd-${c.level}`}>
-      {CROWD_ICON[c.level]} 混雑予想: <strong>{CROWD_LABEL[c.level]}</strong>
+      {CROWD_ICON[c.level]} 混雑予想{c.basis === "estimate" ? "（推定）" : ""}: <strong>{CROWD_LABEL[c.level]}</strong>
       <small>（{c.reasons.join("・")}）</small>
     </p>
   );
@@ -861,7 +866,7 @@ function CrowdBadge({ park, date }: { park: ParkId; date: string }) {
 const RANK_JA = ["第1優先", "第2優先", "第3優先", "第4優先"];
 
 /** 本命パークの優先順位（第1〜第4）。上の優先ほど混雑予想の低い日に置き、予備日も優先する */
-function FocusPicker({ value, onChange, plan }: { value: readonly ParkId[]; onChange: (p: ParkId[]) => void; plan: Plan | null }) {
+function FocusPicker({ value, onChange, plan, crowd }: { value: readonly ParkId[]; onChange: (p: ParkId[]) => void; plan: Plan | null; crowd: CrowdFeed | null }) {
   const set = (rank: number, park: ParkId | ""): void => {
     const slots: (ParkId | "")[] = [0, 1, 2, 3].map((i) => value[i] ?? "");
     const prev = slots[rank] ?? "";
@@ -907,12 +912,15 @@ function FocusPicker({ value, onChange, plan }: { value: readonly ParkId[]; onCh
               <tr key={date}>
                 <th>{dayLabel(date)}</th>
                 {PARKS.map((p) => {
-                  const c = crowdInfo(p.id, date);
+                  const c = crowdInfo(p.id, date, crowd);
                   const mine = day?.morningPark === p.id;
                   return (
                     <td key={p.id} className={mine ? "mine" : undefined} title={c.reasons.join("・")}>
                       {CROWD_ICON[c.level]}
-                      <small>{CROWD_LABEL[c.level]}</small>
+                      <small>
+                        {CROWD_LABEL[c.level]}
+                        {crowd && c.basis === "estimate" && "*"}
+                      </small>
                     </td>
                   );
                 })}
@@ -922,13 +930,23 @@ function FocusPicker({ value, onChange, plan }: { value: readonly ParkId[]; onCh
         </tbody>
       </table>
       {plan && <p className="note">枠で囲んだところが、今の作戦で行くパークです。</p>}
-      <p className="note">
-        混雑予想は一般的な傾向から作った目安です（土曜がいちばん混み水曜がいちばん空く、エプコットはフラワー＆ガーデンの週末が混む、5/4はスタジオがスター・ウォーズの日で混む。参考:{" "}
-        <a href={CROWD_SOURCE.url} target="_blank" rel="noreferrer">
-          {CROWD_SOURCE.label}
-        </a>
-        ）。出発1ヶ月前に確かめ直します。
-      </p>
+      {crowd ? (
+        <p className="note crowd-src">
+          📊 出典:{" "}
+          <a href={crowd.source.url} target="_blank" rel="noreferrer">
+            {crowd.source.name}
+          </a>
+          （{crowd.fetchedAt}取得。{crowd.method}）。値のないところ（*）は一般的な傾向からの推定です。
+        </p>
+      ) : (
+        <p className="note crowd-src">
+          ⚠️ まだ混雑予想サイトの値を取り込めていないため、一般的な傾向から作った推定です（土曜がいちばん混み水曜がいちばん空く、エプコットはフラワー＆ガーデンの週末が混む、5/4はスタジオがスター・ウォーズの日で混む。参考:{" "}
+          <a href={CROWD_SOURCE.url} target="_blank" rel="noreferrer">
+            {CROWD_SOURCE.label}
+          </a>
+          ）。
+        </p>
+      )}
     </div>
   );
 }

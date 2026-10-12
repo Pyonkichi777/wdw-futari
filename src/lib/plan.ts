@@ -1,5 +1,5 @@
 import type { ConsensusItem, MealPeriod, ParkId, PersonId, Rank, Ride } from "../types";
-import { STAR_WARS_DAY, crowdScore } from "./crowd";
+import { STAR_WARS_DAY, crowdScore, type CrowdFeed } from "./crowd";
 
 /** 1日の時間の枠 */
 export type Slot = "early" | "am" | "lunch" | "pm" | "dinner" | "night";
@@ -107,7 +107,7 @@ function permutations<T>(xs: readonly T[]): T[][] {
  * パークを回る日を決める。4パークを1日ずつ（最終日は予備日）。
  * 重い（S・Aが多い）パークほど週末を避け、ハリウッド・スタジオはスター・ウォーズの日を避ける。
  */
-export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[], focusParks: readonly ParkId[] = []): ParkId[] {
+export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[], focusParks: readonly ParkId[] = [], crowd: CrowdFeed | null = null): ParkId[] {
   const weight = (p: ParkId): number => entries.filter((e) => e.ride.park === p).reduce((s, e) => s + RANK_WEIGHT[e.rank], 0) + 1;
   const mainDates = dates.slice(0, PARK_IDS.length);
   let best: { order: ParkId[]; cost: number } | null = null;
@@ -117,7 +117,7 @@ export function chooseParkOrder(entries: readonly Entry[], dates: readonly strin
       const date = mainDates[i];
       if (!date) return;
       if (park === "HS" && date === STAR_WARS_DAY) cost += 1000;
-      cost += crowdScore(park, date) * PARK_POPULARITY[park] * weight(park) * focusFactor(park, focusParks);
+      cost += crowdScore(park, date, crowd) * PARK_POPULARITY[park] * weight(park) * focusFactor(park, focusParks);
     });
     if (!best || cost < best.cost) best = { order, cost };
   }
@@ -221,7 +221,7 @@ export function buildPlan(
   consensus: readonly ConsensusItem[],
   rideById: (id: string) => Ride | undefined,
   dates: readonly string[],
-  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[] } = {},
+  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null } = {},
 ): Plan {
   const skip = new Set((opts.excluded ?? []).map((e) => e.rideId));
   const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
@@ -232,7 +232,7 @@ export function buildPlan(
   pool.sort((a, b) => RANK_WEIGHT[b.rank] - RANK_WEIGHT[a.rank] || a.order - b.order);
 
   const focusParks = opts.focusParks ?? [];
-  const order = chooseParkOrder(pool, dates, focusParks);
+  const order = chooseParkOrder(pool, dates, focusParks, opts.crowd ?? null);
   const days: DayPlan[] = dates.slice(0, PARK_IDS.length).map((date, i) => {
     const park = order[i] ?? "MK";
     return { date, morningPark: park, eveningPark: park === "AK" ? "EP" : park, items: [] };
