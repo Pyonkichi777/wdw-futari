@@ -4,6 +4,7 @@ import { voteLabel } from "../lib/consensus";
 import { BOOKING_DAYS_BEFORE, bookingOpensJst, filterDining, type DiningArea, type DiningFilter, type DiningType } from "../lib/dining";
 import type { MealPeriod, Votes } from "../types";
 import { RideCard } from "./RideCard";
+import { TRIP, shortDate } from "../data/trip";
 
 const KEY = "wdw-futari:filters:dining";
 const EMPTY: DiningFilter = { type: "ALL", area: "ALL", meal: "ALL", q: "" };
@@ -64,16 +65,12 @@ export function DiningScreen({ myVotes, onGoVote }: Props) {
       <div className="booking-box">
         <p className="booking-title">📅 予約はいつから？</p>
         <p>
-          直営ホテル（ポップセンチュリー）に泊まる人は、<strong>チェックイン日の{BOOKING_DAYS_BEFORE}日前の朝6時（米東部時間）</strong>から、滞在中の全日分（最大10日）をまとめて予約できます。
+          直営ホテル（ポップセンチュリー）に泊まる人は、<strong>チェックイン日の{BOOKING_DAYS_BEFORE}日前の朝6時（米東部時間）</strong>から、滞在中の全日分（最大10日）をまとめて予約できます。4/29の夜は空港近くのホテルなので、数えるのはポップセンチュリーのチェックイン（{shortDate(TRIP.checkIn)}）から。
         </p>
         <dl className="access">
           <div className="strong">
-            <dt>4/30チェックイン</dt>
-            <dd>{bookingOpensJst("2027-04-30")}（日本時間）</dd>
-          </div>
-          <div>
-            <dt>4/29チェックイン</dt>
-            <dd>{bookingOpensJst("2027-04-29")}（日本時間）</dd>
+            <dt>レストラン予約の開始</dt>
+            <dd>{bookingOpensJst(TRIP.checkIn)}（日本時間）</dd>
           </div>
         </dl>
         <p className="note">予約は公式アプリ「My Disney Experience」から。予約時にクレジットカードの登録が必要で、直前の取り消しや無断キャンセルには料金がかかります（金額は予約画面に表示）。満席でも、当日アプリの「空き待ちリスト（Walk-up List）」で入れることがあります。</p>

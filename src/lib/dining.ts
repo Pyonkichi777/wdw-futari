@@ -7,20 +7,29 @@ import { matchesQuery } from "./search";
 /** ディズニーの食事予約は、直営ホテル宿泊者ならチェックイン日の60日前・朝6時（米東部時間）から滞在全日分（最大10日）を予約できる */
 export const BOOKING_DAYS_BEFORE = 60;
 
+/** Lightning Lane は、直営ホテル宿泊者ならチェックイン日の7日前・朝7時（米東部時間）から滞在全日分を予約できる */
+export const LL_DAYS_BEFORE = 7;
+
 /**
- * 予約開始の日時（日本時間で表示する文字列）。
+ * チェックイン日の daysBefore 日前・米東部 etHour 時を、日本時間の文字列にする。
  * checkIn は "YYYY-MM-DD"。米東部の夏時間かどうかは Intl に任せる
  */
-export function bookingOpensJst(checkIn: string): string {
+export function opensJst(checkIn: string, daysBefore: number, etHour: number): string {
   const [y, m, d] = checkIn.split("-").map(Number) as [number, number, number];
-  const day = new Date(Date.UTC(y, m - 1, d - BOOKING_DAYS_BEFORE));
-  // その日の 6:00 米東部時間 = UTC 10:00（夏時間）か 11:00（標準時間）
+  const day = new Date(Date.UTC(y, m - 1, d - daysBefore));
+  // その日の米東部の時差（夏時間なら4時間、標準時間なら5時間）を、正午の時刻から求める
   const probe = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12));
-  const etHour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(probe));
-  const offset = 12 - etHour; // 4（夏時間）か 5（標準時間）
-  const opens = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 6 + offset));
+  const probeEt = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(probe));
+  const offset = 12 - probeEt;
+  const opens = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), etHour + offset));
   return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(opens);
 }
+
+/** レストラン予約の開始（チェックイン60日前・米東部6時） */
+export const bookingOpensJst = (checkIn: string): string => opensJst(checkIn, BOOKING_DAYS_BEFORE, 6);
+
+/** Lightning Lane 予約の開始（チェックイン7日前・米東部7時） */
+export const lightningLaneOpensJst = (checkIn: string): string => opensJst(checkIn, LL_DAYS_BEFORE, 7);
 
 const BOOKING_TEXT: Record<DiningInfo["booking"], (walkUp: boolean) => string> = {
   disney: (walkUp) => `できる（公式アプリで${BOOKING_DAYS_BEFORE}日前から）${walkUp ? "。満席なら当日の空き待ちリストも使える" : ""}`,

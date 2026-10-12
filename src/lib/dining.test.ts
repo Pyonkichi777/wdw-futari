@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DINING } from "../data/dining";
 import { RIDES } from "../data/rides";
-import { bookingOpensJst, filterDining } from "./dining";
+import { bookingOpensJst, filterDining, lightningLaneOpensJst } from "./dining";
 
 const ALL = { type: "ALL", area: "ALL", meal: "ALL", q: "" } as const;
 
@@ -18,6 +18,10 @@ describe("キャラクターダイニング", () => {
 
   it("予約開始: 4/30チェックインなら3/1の朝6時（米東部・標準時間）＝日本時間20時", () => {
     expect(bookingOpensJst("2027-04-30")).toBe("2027年3月1日(月) 20:00");
+  });
+
+  it("Lightning Lane 予約開始: 4/30チェックインなら4/23の朝7時（米東部・夏時間）＝日本時間20時", () => {
+    expect(lightningLaneOpensJst("2027-04-30")).toBe("2027年4月23日(金) 20:00");
   });
 
   it("予約開始: 夏時間の時期は日本時間19時になる", () => {

@@ -1712,3 +1712,71 @@ button.glass {
   font-size: 0.8rem;
   font-weight: 700;
 }
+
+/* ---------------------------------------------------------------- 旅の予定 */
+.trip-box {
+  margin: 10px 12px 0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.trip-box summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trip-box summary::-webkit-details-marker {
+  display: none;
+}
+.trip-box summary::after {
+  content: "▼ くわしく";
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+.trip-box[open] summary::after {
+  content: "▲ とじる";
+}
+.trip-title {
+  font-weight: 800;
+}
+.trip-sum {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.trip-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 6px;
+  font-size: 0.84rem;
+}
+.trip-table th,
+.trip-table td {
+  text-align: left;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.trip-table th {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.trip-date {
+  white-space: nowrap;
+  font-weight: 700;
+}
+.trip-table tr.park-day td {
+  background: rgba(201, 162, 39, 0.1);
+}
+.trip-deadlines {
+  margin-top: 6px;
+}
+.trip-table {
+  table-layout: fixed;
+}
+.trip-table th:nth-child(1) { width: 25%; }
+.trip-table th:nth-child(2) { width: 42%; }
+.trip-table th:nth-child(3) { width: 33%; }

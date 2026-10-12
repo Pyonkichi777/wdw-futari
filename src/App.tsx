@@ -3,6 +3,7 @@ import { ConsensusScreen } from "./components/ConsensusScreen";
 import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
 import { TitleLockup } from "./components/TitleLockup";
+import { TripBox } from "./components/TripBox";
 import { ScrollTopButton, scrollToTop } from "./components/ScrollTopButton";
 import { Skyline } from "./components/Skyline";
 import { DiningScreen } from "./components/DiningScreen";
@@ -159,6 +160,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         {!photo && <Skyline />}
         <BannerButton hasPhoto={photo !== null} onSave={(d) => store.saveBanner(d).catch(report)} />
       </header>
+      <TripBox />
       {banner && <p className="banner demo">{banner}</p>}
       {error && (
         <p className="banner warn" onClick={() => setError(null)}>
