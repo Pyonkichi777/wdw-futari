@@ -25,7 +25,8 @@ import {
   type PlanItem,
   type Slot,
 } from "../lib/plan";
-import { checkPlan } from "../lib/planChecks";
+import { checkPlan, fixAllReds } from "../lib/planChecks";
+import { applyFix } from "../lib/planFixes";
 import { routeDay } from "../lib/route";
 import { reservationTasks } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
@@ -132,6 +133,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
   };
   const warnings = checkPlan(plan, consensus.items, rideById);
   const reds = warnings.filter((w) => w.level === "red");
+  const fixableReds = reds.filter((w) => w.fix).length;
   const left = unplaced(plan, consensus.items);
 
   return (
@@ -154,9 +156,22 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           {warnings.map((w, i) => (
             <li key={i} className={`w-${w.level}`}>
               {w.level === "red" ? "🔴" : "🟡"} {w.message}
+              {w.fix && (
+                <div className="fix">
+                  <span>💡 おすすめ: {w.fix.text}</span>
+                  <button className="mini" onClick={() => w.fix && save((p) => applyFix(p, w.fix!))}>
+                    この提案で直す
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
+        {fixableReds > 1 && (
+          <button className="mini fix-all" onClick={() => save((p) => fixAllReds(p, consensus.items, rideById))}>
+            💡 おすすめどおりに🔴をまとめて直す（{fixableReds}件）
+          </button>
+        )}
       </div>
 
       {lowIds().size > 0 && (
