@@ -31,3 +31,30 @@ describe("予約で選ぶ時間枠のおすすめ", () => {
     expect(dinner).toBeLessThanOrEqual(19 * 60);
   });
 });
+
+describe("時刻は上から下へ進む（前の項目より前の時刻にならない）", async () => {
+  const { dayTimeline } = await import("./timing");
+  const { optimizePlan } = await import("./route");
+  it("朝イチの後の朝食は、朝イチより後の時刻", () => {
+    const d: DayPlan = {
+      date: "2027-05-01",
+      morningPark: "EP",
+      eveningPark: "EP",
+      items: [
+        { rideId: "remy", slot: "early", method: "early" },
+        { rideId: "park-creperie-de-paris", slot: "am", method: "meal" },
+        { rideId: "test-track", slot: "am", method: "standby" },
+      ],
+    };
+    const day = optimizePlan({ days: [d], updatedBy: null, updatedAt: null }).days[0]!;
+    const h = timeHints(day, rideById);
+    expect(h.get("park-creperie-de-paris")!.at).toBeGreaterThan(h.get("remy")!.at);
+    // 並びの順に時刻が増えていく
+    const order = dayTimeline(day, rideById).segments.flatMap((s) => (s.type === "item" ? [h.get(s.ride.id)!.at] : []));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+  it("朝食がその日の最初なら、開園前の 8:00 頃", () => {
+    const d: DayPlan = { date: "2027-05-01", morningPark: "EP", eveningPark: "EP", items: [{ rideId: "park-creperie-de-paris", slot: "am", method: "meal" }, { rideId: "test-track", slot: "am", method: "standby" }] };
+    expect(timeHints(d, rideById).get("park-creperie-de-paris")?.text).toBe("8:00頃");
+  });
+});

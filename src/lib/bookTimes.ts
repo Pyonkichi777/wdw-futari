@@ -42,37 +42,48 @@ export function dayTimes(
   const start = hasEarly ? (h?.early ? toMinutes(h.early) : h ? open - 30 : EARLY_OPEN) : open;
   let t = start;
   let arrived = false;
+  // 表示する時刻は、前の項目より前にならないようにする（上から下へ時間が進む）
+  let last = 0;
+  const ceil30 = (m: number): number => Math.ceil(m / 30) * 30;
+  const put = (id: string, at: number, text: (m: number) => string): number => {
+    const m = Math.max(at, last);
+    last = m;
+    out.set(id, { at: m, text: text(m) });
+    return m;
+  };
   for (const seg of segments) {
     if (seg.type === "travel") {
       // 最初の移動はホテルからの朝の移動（開園時刻に着くように出る）
       if (arrived) t += seg.leg.minutes;
       continue;
     }
+    const first = !arrived;
     arrived = true;
     const { item, ride, minutes } = seg;
     if (item.method === "meal") {
-      const at =
+      const want =
         item.slot === "dinner" || item.slot === "night"
           ? clamp(round30(t), 17 * 60 + 30, 19 * 60)
           : item.slot === "lunch" || item.slot === "pm"
             ? clamp(round30(t), 11 * 60 + 30, 13 * 60 + 30)
-            : 8 * 60;
-      out.set(ride.id, { at, text: `${clock(at)}頃` });
-      t = Math.max(t, at) + minutes;
+            : // 朝食: その日の最初なら開園前の 8:00 頃、朝イチの後なら終わってすぐ
+              first
+              ? 8 * 60
+              : ceil30(t);
+      const at = put(ride.id, want, (m) => `${clock(m)}頃`);
+      t = (first ? at : Math.max(t, at)) + minutes;
       continue;
     }
     if (ride.kind === "night") {
       // 夜のショー（花火など）は暗くなってから。場所取りを含めて 20:30 頃から
-      const at = Math.max(round30(t), 20 * 60 + 30);
-      out.set(ride.id, { at, text: `${clock(at)}頃（上演時刻は当日アプリで確認）` });
+      const at = put(ride.id, Math.max(round30(t), 20 * 60 + 30), (m) => `${clock(m)}頃（上演時刻は当日アプリで確認）`);
       t = at + minutes;
       continue;
     }
     if (item.method === "multi" || item.method === "multiExtra" || item.method === "single") {
-      const from = Math.floor(t / 30) * 30;
-      out.set(ride.id, { at: from, text: `${clock(from)}〜${clock(from + 60)}の枠` });
+      put(ride.id, Math.floor(t / 30) * 30, (m) => `${clock(m)}〜${clock(m + 60)}の枠`);
     } else {
-      out.set(ride.id, { at: t, text: `${clock(round30(t))}頃` });
+      put(ride.id, round30(t), (m) => `${clock(m)}頃`);
     }
     t += minutes;
   }

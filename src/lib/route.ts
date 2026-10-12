@@ -15,7 +15,14 @@ export function orderByRoute(items: readonly PlanItem[]): PlanItem[] {
   const out: PlanItem[] = [];
   let here: { lat: number; lng: number } | null = null;
   for (const slot of SLOT_ORDER) {
-    const rest = items.filter((i) => i.slot === slot);
+    // 午前の枠に朝食があれば、その枠のいちばん初めに（食べてから回る）
+    const inSlot = items.filter((i) => i.slot === slot);
+    const meals = slot === "am" ? inSlot.filter((i) => i.method === "meal") : [];
+    for (const m of meals) {
+      out.push(m);
+      here = pos(m.rideId) ?? here;
+    }
+    const rest = inSlot.filter((i) => !meals.includes(i));
     while (rest.length > 0) {
       let best = 0;
       if (here) {
