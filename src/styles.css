@@ -2046,3 +2046,38 @@ button.glass {
 .where-warn {
   color: #d23b55;
 }
+
+/* ---- 時短パスの区分 */
+.ll {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.meta li.ll {
+  font-weight: 800;
+}
+.ll-singleOnly { background: #ffd9e0 !important; color: #a3123a !important; }
+.ll-multiTier1 { background: #cfe6ff !important; color: #0b4f8a !important; }
+.ll-multi { background: #e3f1ff !important; color: #1d5f99 !important; }
+.ll-none { background: rgba(127, 127, 127, 0.14) !important; color: var(--muted) !important; }
+@media (prefers-color-scheme: dark) {
+  .ll-singleOnly { background: #4a1724 !important; color: #ffb3c2 !important; }
+  .ll-multiTier1 { background: #123a5a !important; color: #a9d6ff !important; }
+  .ll-multi { background: #16324a !important; color: #bfe0ff !important; }
+}
+.ll-guide summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ll-park h4 {
+  margin: 10px 0 4px;
+}
+.ll-park p {
+  margin: 4px 0;
+  font-size: 0.86rem;
+  line-height: 1.7;
+}

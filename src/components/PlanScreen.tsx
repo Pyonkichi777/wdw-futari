@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { LL_LONG, LL_SHORT, LL_VERIFIED_AT, llKind, type LlKind } from "../lib/lightningLane";
+import { RIDES } from "../data/rides";
 import { DAY_LIMIT_MINUTES, TRANSPORT_LABEL, dayTimeline, hoursText } from "../lib/timing";
 import { WhereNow, todayInOrlando } from "./WhereNow";
 import { PARKS, parkName } from "../data/parks";
@@ -159,6 +161,7 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
       )}
 
       <LightningLaneSheet plan={plan} />
+      <LightningLaneGuide />
 
       <button
         className="link"
@@ -289,6 +292,7 @@ function ItemRow({ ride, rank, item, minutes, onClick }: { ride: Ride; rank: Ran
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
       <span className="plan-item-name">{ride.nameJa}</span>
       {item && <span className={`plan-method m-${item.method}`}>{METHOD_LABEL[item.method]}</span>}
+      {ride.kind === "ride" && <span className={`ll ll-${llKind(ride)}`}>{LL_SHORT[llKind(ride)]}</span>}
       {minutes !== undefined && <span className="plan-min">⏱ {hoursText(minutes)}</span>}
     </button>
   );
@@ -395,5 +399,36 @@ function LightningLaneSheet({ plan }: { plan: Plan }) {
       </ol>
       <p className="note">★＝人気グループ（事前予約は1日1本まで）</p>
     </div>
+  );
+}
+
+/** パークごとの時短パスの対象一覧（公式サイトで確認した内容） */
+function LightningLaneGuide() {
+  const kinds: LlKind[] = ["singleOnly", "multiTier1", "multi"];
+  return (
+    <details className="plan-day ll-guide">
+      <summary>
+        <strong>📋 時短パスで乗れる乗り物の一覧</strong>
+        <span className="note">（公式サイトで{LL_VERIFIED_AT}に確認）</span>
+      </summary>
+      <p className="note">
+        Multi Pass（1日ごとに買う。事前予約3本＋使ったら追加予約）と Single Pass（1本ずつ買う）は<strong>別物</strong>です。Single Pass専用の乗り物は、Multi Passを持っていても時短の列には入れません。
+      </p>
+      {PARKS.map((p) => (
+        <div key={p.id} className="ll-park">
+          <h4>{p.nameJa}</h4>
+          {kinds.map((k) => {
+            const list = RIDES.filter((r) => r.park === p.id && r.kind === "ride" && llKind(r) === k);
+            if (list.length === 0) return null;
+            return (
+              <p key={k}>
+                <span className={`ll ll-${k}`}>{LL_SHORT[k]}</span> {list.map((r) => r.nameJa).join("、")}
+              </p>
+            );
+          })}
+        </div>
+      ))}
+      <p className="note">ここに載っていない乗り物は、{LL_LONG.none}。対象は出発前（3月末）にもう一度確認します。</p>
+    </details>
   );
 }

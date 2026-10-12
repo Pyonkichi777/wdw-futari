@@ -46,19 +46,19 @@ export function accessLines(ride: Ride): AccessLine[] {
     case "single":
       lines.push({
         label: "時短パス",
-        value: "Lightning Lane Single Pass（このアトラクション専用の有料パス。1回ずつ購入、1人1日2本まで）。Multi Passでは取れない",
+        value: "Single Pass専用（このアトラクション専用の有料パス。1回ずつ購入、1人1日2本まで）。Multi Passでは乗れない",
         strong: true,
       });
       break;
     case "multi":
       lines.push(
         ride.multiPassTier === 1
-          ? { label: "時短パス", value: "Lightning Lane Multi Pass（人気グループ：事前予約の3本のうち、このグループからは1日1つまで）", strong: true }
-          : { label: "時短パス", value: "Lightning Lane Multi Pass（事前予約の3本に入れられる）" },
+          ? { label: "時短パス", value: "Multi Passで乗れる（人気グループ：事前予約の3本のうち、このグループからは1日1つまで）", strong: true }
+          : { label: "時短パス", value: "Multi Passで乗れる（事前予約の3本に入れられる）" },
       );
       break;
     case "none":
-      lines.push({ label: "時短パス", value: "なし（並ぶか、上演時刻に行くだけ）" });
+      lines.push({ label: "時短パス", value: "なし（Multi PassでもSingle Passでも優先されない。並ぶか、上演時刻に行くだけ）" });
       break;
   }
 

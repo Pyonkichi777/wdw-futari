@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { MEAL_LABEL } from "../data/dining";
 import { parkName } from "../data/parks";
 import { BOOKING_CHIP, diningPlace } from "../lib/dining";
+import { LL_SHORT, llKind } from "../lib/lightningLane";
 import { REVIEWS } from "../data/reviews";
 import { KIND_LABEL, accessLines } from "../lib/access";
 import { rideLinks } from "../lib/links";
@@ -11,11 +12,6 @@ import { MOTION_LABEL, motionDots, motionOf } from "../lib/motion";
 import { scoreOf } from "../lib/reviewScore";
 import type { GreetStyle, Ride } from "../types";
 
-const LL_CHIP: Record<Ride["lightningLane"], string> = {
-  single: "Single Pass（有料・個別）",
-  multi: "Multi Pass",
-  none: "時短パスなし",
-};
 
 const GREET_CHIP: Record<GreetStyle, string> = {
   always: "時間帯内ならいつでも",
@@ -48,8 +44,7 @@ export function RideMeta({ ride }: { ride: Ride }) {
         </>
       )}
       <MotionChip ride={ride} />
-      {!ride.dining && <li className={ride.lightningLane === "single" ? "accent" : undefined}>{LL_CHIP[ride.lightningLane]}</li>}
-      {ride.multiPassTier === 1 && <li className="accent">人気グループ</li>}
+      {!ride.dining && !ride.greet && <li className={`ll ll-${llKind(ride)}`}>{LL_SHORT[llKind(ride)]}</li>}
       {ride.kind === "ride" && ride.earlyEntry && <li className="accent">開園前入園OK</li>}
       {ride.singleRider && <li className="accent">1人乗り専用の列あり</li>}
       <ReviewChip ride={ride} />
