@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { DAY_LIMIT_MINUTES, TRANSPORT_LABEL, dayTimeline, hoursText } from "../lib/timing";
+import { WhereNow, todayInOrlando } from "./WhereNow";
 import { PARKS, parkName } from "../data/parks";
 import { rideById } from "../data/rides";
 import { ITINERARY, TRIP } from "../data/trip";
@@ -49,6 +51,8 @@ function methodsFor(r: Ride): Method[] {
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
 export function PlanScreen({ me, consensus, plan, onSave }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
+  const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
+  const today = todayInOrlando();
   const save = (p: Plan): void => onSave({ ...p, updatedBy: me, updatedAt: Date.now() });
   const rankOf = (id: string): Rank | undefined => consensus.items.find((c) => c.rideId === id)?.rank;
 
@@ -92,6 +96,8 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
         </p>
       )}
 
+      <WhereNow plan={plan} onHere={setHere} />
+
       <div className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
         <ul>
@@ -109,6 +115,7 @@ export function PlanScreen({ me, consensus, plan, onSave }: Props) {
           day={d}
           rankOf={rankOf}
           editing={editing}
+          here={d.date === today ? here : null}
           onEdit={setEditing}
           onParks={(parks) => save(setDayParks(plan, d.date, parks))}
           onMove={(id, to) => {
@@ -170,6 +177,7 @@ function DayCard({
   days,
   rankOf,
   editing,
+  here,
   onEdit,
   onParks,
   onMove,
@@ -179,6 +187,7 @@ function DayCard({
   days: readonly DayPlan[];
   rankOf: (id: string) => Rank | undefined;
   editing: string | null;
+  here: ParkId | "HOTEL" | null;
   onEdit: (id: string | null) => void;
   onParks: (p: { morningPark: ParkId; eveningPark: ParkId }) => void;
   onMove: (id: string, to: { date: string; slot: Slot; method: Method }) => void;
@@ -186,7 +195,7 @@ function DayCard({
 }) {
   const isReserve = day.date === TRIP.parkDays[TRIP.parkDays.length - 1];
   return (
-    <div className={`plan-day park-${day.morningPark}`}>
+    <div className={`plan-day park-${day.morningPark}${here !== null ? " today" : ""}`}>
       <div className="plan-day-head">
         <h3>
           {dayLabel(day.date)}
@@ -217,42 +226,70 @@ function DayCard({
           </label>
         </div>
       </div>
-      {SLOT_ORDER.map((slot) => {
-        const items = day.items.filter((i) => i.slot === slot);
-        if (items.length === 0) return null;
-        return (
-          <div key={slot} className="plan-slot">
-            <p className="plan-slot-label">{SLOT_LABEL[slot]}</p>
-            <ul className="plan-items">
-              {items.map((it) => {
-                const r = rideById(it.rideId);
-                if (!r) return null;
-                return (
-                  <li key={it.rideId}>
-                    <ItemRow ride={r} rank={rankOf(r.id)} item={it} hop={r.park !== day.morningPark} onClick={() => onEdit(editing === r.id ? null : r.id)} />
-                    {editing === r.id && <ItemEditor ride={r} days={days} current={{ date: day.date, slot: it.slot, method: it.method }} onMove={(to) => onMove(r.id, to)} onRemove={() => onRemove(r.id)} />}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+      <DayTimeline
+        day={day}
+        here={here}
+        render={(it, r, minutes) => (
+          <>
+            <ItemRow ride={r} rank={rankOf(r.id)} item={it} minutes={minutes} onClick={() => onEdit(editing === r.id ? null : r.id)} />
+            {editing === r.id && <ItemEditor ride={r} days={days} current={{ date: day.date, slot: it.slot, method: it.method }} onMove={(to) => onMove(r.id, to)} onRemove={() => onRemove(r.id)} />}
+          </>
+        )}
+      />
       {day.items.length === 0 && <p className="empty">{isReserve ? "予備日です。取りこぼした乗り物の回収や、もう一度乗りたいものに使います。" : "まだ何も入っていません。"}</p>}
     </div>
   );
 }
 
-function ItemRow({ ride, rank, item, hop = false, onClick }: { ride: Ride; rank: Rank | undefined; item: PlanItem | null; hop?: boolean; onClick: () => void }) {
+/** 1日の流れ: 📍パーク → 項目（所要時間つき）→ 🚌移動 → … */
+function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTEL" | null; render: (it: PlanItem, r: Ride, minutes: number) => ReactNode }) {
+  const { segments, totalMinutes } = dayTimeline(day, rideById);
+  let lastSlot: Slot | null = null;
+  return (
+    <>
+      <p className={totalMinutes > DAY_LIMIT_MINUTES ? "plan-total over" : "plan-total"}>
+        ⏱ 合計 {hoursText(totalMinutes)}（移動込みの目安）{totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
+      </p>
+      <ul className="plan-items timeline">
+        {segments.map((seg, i) => {
+          if (seg.type === "travel") {
+            const toName = seg.to === "HOTEL" ? "ホテル（ポップセンチュリー）" : parkName(seg.to);
+            return (
+              <li key={`t${i}`} className="plan-travel-wrap">
+                <p className="plan-travel">
+                  {seg.leg.by === "skyliner" ? "🚡" : seg.leg.by === "monorail" ? "🚝" : seg.leg.by === "bus" ? "🚌" : "🚶"} {toName}へ移動 {hoursText(seg.leg.minutes)}（{TRANSPORT_LABEL[seg.leg.by]}）
+                </p>
+                {seg.to !== "HOTEL" && (
+                  <p className={`plan-at park-${seg.to}`}>
+                    📍 {parkName(seg.to)}
+                    {here === seg.to && <span className="here">今ここ</span>}
+                  </p>
+                )}
+              </li>
+            );
+          }
+          const showSlot = seg.item.slot !== lastSlot;
+          lastSlot = seg.item.slot;
+          return (
+            <li key={seg.item.rideId}>
+              {showSlot && <p className="plan-slot-label">{SLOT_LABEL[seg.item.slot]}</p>}
+              {render(seg.item, seg.ride, seg.minutes)}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+function ItemRow({ ride, rank, item, minutes, onClick }: { ride: Ride; rank: Rank | undefined; item: PlanItem | null; minutes?: number; onClick: () => void }) {
   return (
     <button className="plan-item" onClick={onClick}>
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
-      <span className="plan-item-name">
-        {ride.nameJa}
-        {hop && <small>（{parkName(ride.park)}）</small>}
-      </span>
+      <span className="plan-item-name">{ride.nameJa}</span>
       {item && <span className={`plan-method m-${item.method}`}>{METHOD_LABEL[item.method]}</span>}
+      {minutes !== undefined && <span className="plan-min">⏱ {hoursText(minutes)}</span>}
     </button>
   );
 }

@@ -1984,3 +1984,65 @@ button.glass {
 .plan-item {
   min-width: 0;
 }
+.plan-total {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin: 6px 0 2px;
+}
+.plan-total.over {
+  color: #d23b55;
+}
+.plan-min {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.plan-travel {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 2px 0;
+  padding-left: 6px;
+  border-left: 2px dashed var(--line);
+}
+.plan-at {
+  font-weight: 800;
+  font-size: 0.9rem;
+  margin: 6px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.plan-at .here,
+.where-now .here {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  background: #ff4f6d;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.plan-day.today {
+  outline: 3px solid var(--gold-soft);
+}
+.where-now {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin: 8px 0 12px;
+}
+.where-btn {
+  width: 100%;
+  min-height: 46px;
+  font-weight: 800;
+  border-radius: 12px;
+}
+.where-plan,
+.where-result {
+  margin: 6px 0;
+  font-size: 0.9rem;
+}
+.where-warn {
+  color: #d23b55;
+}

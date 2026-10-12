@@ -1,5 +1,6 @@
 import type { ConsensusItem, Ride } from "../types";
 import { STAR_WARS_DAY, needsMultiPass, unplaced, type Plan } from "./plan";
+import { DAY_LIMIT_MINUTES, dayTimeline, hoursText } from "./timing";
 
 export interface PlanWarning {
   level: "red" | "yellow";
@@ -59,6 +60,8 @@ export function checkPlan(plan: Plan, consensus: readonly ConsensusItem[], rideB
     if (breakfast && early.length > 0) {
       out.push({ level: "yellow", date: d.date, message: `${day}: 朝イチと朝食「${name(breakfast.rideId)}」が重なりやすいので、朝食は朝イチの1本に乗った後の時間（9時半ごろ以降）で予約する` });
     }
+    const total = dayTimeline(d, rideById).totalMinutes;
+    if (total > DAY_LIMIT_MINUTES) out.push({ level: "yellow", date: d.date, message: `${day}: 予定の合計が${hoursText(total)}で、1日に回れる目安（約13時間）を超えています。Bを減らすか別の日へ` });
     if (d.date === STAR_WARS_DAY && (d.morningPark === "HS" || d.eveningPark === "HS")) {
       out.push({ level: "yellow", date: d.date, message: `${day}: スター・ウォーズの日でハリウッド・スタジオがとても混みます` });
     }
