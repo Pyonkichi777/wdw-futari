@@ -2647,3 +2647,24 @@ ol.rsv-list {
   flex: 1 0 100%;
   font-size: 0.72rem;
 }
+.crowd-table td {
+  padding: 0;
+}
+.crowd-cell {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.crowd-cell:active {
+  background: var(--surface-2);
+}
+.crowd-table td.pinned {
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  border-radius: 8px;
+}

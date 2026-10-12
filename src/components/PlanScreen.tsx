@@ -23,6 +23,7 @@ import {
   parkOrderFor,
   withKept,
   type DayPlan,
+  type FixedParks,
   type Method,
   type Plan,
   type PlanItem,
@@ -111,7 +112,12 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   const rebuild = (cur: Plan, fp: readonly ParkId[]): Plan => {
     // 外したものは作り直しても入れない（記録も引き継ぐ）。「どちらでも」をまとめて外した後なら、それも入れない
     const base = cur.dropLow ? excludeAllLow(cur, items, (id) => isLowPriority(votes, id), rideById, me) : cur;
-    const p = buildPlan(items, rideById, TRIP.parkDays, { focusParks: fp, crowd, ...(base.excluded ? { excluded: base.excluded } : {}) });
+    const p = buildPlan(items, rideById, TRIP.parkDays, {
+      focusParks: fp,
+      crowd,
+      ...(base.excluded ? { excluded: base.excluded } : {}),
+      ...(base.fixedParks ? { fixedParks: base.fixedParks } : {}),
+    });
     return {
       ...p,
       days: p.days.map(routeDay),
@@ -127,6 +133,21 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       return fp.length > 0 ? { ...rest, focusParks: fp } : rest;
     });
   const generate = (): void => save((cur) => rebuild(cur, focusParks));
+  /** 「この日はこのパーク」を2人で決める（もう一度押すと自動に戻す）。決めたら作戦全体を組み直す */
+  const pickPark = (date: string, park: ParkId): void =>
+    save((cur) => {
+      const fixed = { ...(cur.fixedParks ?? {}) };
+      if (fixed[date] === park) delete fixed[date];
+      else fixed[date] = park;
+      const { fixedParks: _old, ...rest } = cur;
+      const next: Plan = Object.keys(fixed).length > 0 ? { ...rest, fixedParks: fixed } : rest;
+      return next.days.length > 0 ? rebuild(next, focusParks) : next;
+    });
+  const clearFixed = (): void =>
+    save((cur) => {
+      const { fixedParks: _old, ...rest } = cur;
+      return rest.days.length > 0 ? rebuild(rest, focusParks) : rest;
+    });
   const voteText = (r: Ride): string | null => {
     const t = votes.toshi[r.id];
     const w = votes.tsuma[r.id];
@@ -140,7 +161,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
         <h2>5日間の作戦</h2>
         <div className="empty-state">
           <p>確定した合意リストから、おすすめの5日間の作戦を自動で組みます。そのあと2人で手直しできます。</p>
-          <FocusPicker value={focusParks} onChange={setFocusParks} plan={null} crowd={crowd} />
+          <FocusPicker value={focusParks} onChange={setFocusParks} plan={null} crowd={crowd} fixed={plan.fixedParks ?? {}} onPick={pickPark} onClearFixed={clearFixed} />
           <button className="primary wide" onClick={generate}>
             合意リストからおすすめの作戦を作る
           </button>
@@ -167,7 +188,12 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   };
   const warnings = checkPlan(plan, items, rideById);
   // 優先順位・混雑予想が変わって、今の日割りがおすすめと違うとき
-  const best = parkOrderFor(items, rideById, TRIP.parkDays, { focusParks, crowd, ...(plan.excluded ? { excluded: plan.excluded } : {}) });
+  const best = parkOrderFor(items, rideById, TRIP.parkDays, {
+    focusParks,
+    crowd,
+    ...(plan.excluded ? { excluded: plan.excluded } : {}),
+    ...(plan.fixedParks ? { fixedParks: plan.fixedParks } : {}),
+  });
   const stale = plan.days.slice(0, best.length).some((d, i) => d.morningPark !== best[i]) ? best : null;
   const reds = warnings.filter((w) => w.level === "red");
   const fixableReds = reds.filter((w) => w.fix).length;
@@ -220,7 +246,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           <strong>⭐ 本命パークの優先順位と混雑予想</strong>
           <span className="note">{focusParks.length > 0 ? focusParks.map((p, i) => `${i + 1}.${PARK_SHORT[p]}`).join(" ") : "未設定"}</span>
         </summary>
-        <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} crowd={crowd} />
+        <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} crowd={crowd} fixed={plan.fixedParks ?? {}} onPick={pickPark} onClearFixed={clearFixed} />
         <p className="note">優先順位を変えると、その場で作戦全体（日割り・乗り方・時刻・事前の予約）を組み直し、2人で共有します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。</p>
       </details>
 
@@ -271,7 +297,10 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
-          onParks={(parks) => save((p) => setDayParks(p, d.date, parks))}
+          onParks={(parks) =>
+            // 朝のパークを変えたら「この日はこのパーク」として作戦全体を組み直す。夕方からのパーク（ホッパー）だけならその日だけ変える
+            parks.morningPark !== d.morningPark ? pickPark(d.date, parks.morningPark) : save((p) => setDayParks(p, d.date, parks))
+          }
           onMove={(id, to) => {
             // 午前／午後を手で変えたものは固定（自動の「近い順」で入れ替えない）
             const cur = d.items.find((i) => i.rideId === id);
@@ -934,7 +963,23 @@ function CrowdBadge({ park, date, crowd }: { park: ParkId; date: string; crowd: 
 const RANK_JA = ["第1優先", "第2優先", "第3優先", "第4優先"];
 
 /** 本命パークの優先順位（第1〜第4）。上の優先ほど混雑予想の低い日に置き、予備日も優先する */
-function FocusPicker({ value, onChange, plan, crowd }: { value: readonly ParkId[]; onChange: (p: ParkId[]) => void; plan: Plan | null; crowd: CrowdFeed | null }) {
+function FocusPicker({
+  value,
+  onChange,
+  plan,
+  crowd,
+  fixed,
+  onPick,
+  onClearFixed,
+}: {
+  value: readonly ParkId[];
+  onChange: (p: ParkId[]) => void;
+  plan: Plan | null;
+  crowd: CrowdFeed | null;
+  fixed: FixedParks;
+  onPick: (date: string, park: ParkId) => void;
+  onClearFixed: () => void;
+}) {
   const set = (rank: number, park: ParkId | ""): void => {
     const slots: (ParkId | "")[] = [0, 1, 2, 3].map((i) => value[i] ?? "");
     const prev = slots[rank] ?? "";
@@ -982,13 +1027,22 @@ function FocusPicker({ value, onChange, plan, crowd }: { value: readonly ParkId[
                 {PARKS.map((p) => {
                   const c = crowdInfo(p.id, date, crowd);
                   const mine = day?.morningPark === p.id;
+                  const pinned = fixed[date] === p.id;
                   return (
-                    <td key={p.id} className={mine ? "mine" : undefined} title={c.reasons.join("・")}>
-                      {CROWD_ICON[c.level]}
-                      <small>
-                        {CROWD_LABEL[c.level]}
-                        {crowd && c.basis === "estimate" && "*"}
-                      </small>
+                    <td key={p.id} className={`${mine ? "mine" : ""}${pinned ? " pinned" : ""}`}>
+                      <button
+                        className="crowd-cell"
+                        title={c.reasons.join("・")}
+                        aria-pressed={mine}
+                        aria-label={`${dayLabel(date)}を${p.nameJa}の日にする（${CROWD_LABEL[c.level]}）`}
+                        onClick={() => onPick(date, p.id)}
+                      >
+                        {pinned ? "📌" : CROWD_ICON[c.level]}
+                        <small>
+                          {CROWD_LABEL[c.level]}
+                          {crowd && c.basis === "estimate" && "*"}
+                        </small>
+                      </button>
                     </td>
                   );
                 })}
@@ -997,7 +1051,16 @@ function FocusPicker({ value, onChange, plan, crowd }: { value: readonly ParkId[
           })}
         </tbody>
       </table>
-      {plan && <p className="note">枠で囲んだところが、今の作戦で行くパークです。</p>}
+      {plan && (
+        <p className="note">
+          枠で囲んだところが、今の作戦で行くパークです。<strong>マスを押すと、その日をそのパークに決められます（📌）。</strong>作戦全体（乗り物・食事・時刻・事前予約）がすぐ組み直されます。もう一度押すと自動に戻ります。
+        </p>
+      )}
+      {Object.keys(fixed).length > 0 && (
+        <button className="mini" onClick={onClearFixed}>
+          📌 手で決めた日をすべて自動に戻す（{Object.keys(fixed).length}日）
+        </button>
+      )}
       {crowd ? (
         <p className="note crowd-src">
           📊 出典:{" "}

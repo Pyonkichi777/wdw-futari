@@ -38,3 +38,22 @@ describe("どちらか1人でも「乗らない」は作戦に入れない", () 
     expect(isVetoed(votes, "b")).toBe(false);
   });
 });
+
+describe("「この日はこのパーク」を手で決める（📌）", async () => {
+  const { buildPlan, parsePlan } = await import("./plan");
+  const { reservationTasks } = await import("./reservations");
+  it("決めた日はそのパーク、残りの日は優先順位と混雑で自動。乗り物・予約もそれに合わせて変わる", () => {
+    const p = buildPlan(heavyMk, rideById, TRIP.parkDays, { focusParks: [...order], fixedParks: { "2027-05-01": "AK", "2027-05-05": "HS" } });
+    expect(p.days[0]?.morningPark).toBe("AK");
+    expect(p.days[4]?.morningPark).toBe("HS");
+    expect(new Set(p.days.slice(0, 4).map((d) => d.morningPark))).toEqual(new Set(["AK", "MK", "HS", "EP"]));
+    expect(p.days[0]?.items.some((i) => i.rideId === "flight-of-passage")).toBe(true);
+    const ak = reservationTasks(p, rideById).filter((t) => t.rideIds.includes("flight-of-passage"));
+    expect(ak.every((t) => t.id.includes("2027-05-01"))).toBe(true);
+    expect(parsePlan(JSON.parse(JSON.stringify(p))).fixedParks).toEqual({ "2027-05-01": "AK", "2027-05-05": "HS" });
+  });
+  it("同じパークを2日にしてもよい（その分、行かないパークが出る）", () => {
+    const p = buildPlan(heavyMk, rideById, TRIP.parkDays, { fixedParks: { "2027-05-01": "MK", "2027-05-02": "MK" } });
+    expect(p.days.slice(0, 2).map((d) => d.morningPark)).toEqual(["MK", "MK"]);
+  });
+});

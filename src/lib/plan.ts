@@ -42,6 +42,8 @@ export interface Plan {
   dropLow?: true;
   /** dropLow のあとで、自分たちで元に戻したもの（これは外さない） */
   keptLow?: string[];
+  /** 2人が手で決めた「この日はこのパーク」。組み直しても変えない */
+  fixedParks?: FixedParks;
   /** 本命パークの優先順位（第1優先から）。2人で共有 */
   focusParks?: ParkId[];
   updatedBy: PersonId | null;
@@ -77,6 +79,9 @@ const RANK_WEIGHT: Record<Rank, number> = { S: 5, A: 3, B: 1 };
 /** 混雑の影響の受けやすさ（人気パークほど大きい） */
 const PARK_POPULARITY: Record<ParkId, number> = { MK: 3, HS: 3, EP: 2, AK: 1.5 };
 
+/** 2人が手で決めた「この日はこのパーク」（日付 → パーク）。自動で組み直しても変えない */
+export type FixedParks = Partial<Record<string, ParkId>>;
+
 /** 本命パークの優先順位ごとに、混雑の重みを何倍にして空いている日へ寄せるか（第1優先 → 第4優先） */
 const FOCUS_FACTORS = [4, 2.5, 1.6, 1.2] as const;
 const focusFactor = (park: ParkId, focusParks: readonly ParkId[]): number => {
@@ -111,7 +116,13 @@ function permutations<T>(xs: readonly T[]): T[][] {
  *   次に第2優先に、残りの日でいちばん空いている日を…（優先順位の順に、混雑予想の低い日を取っていく）
  * - 優先順位のないパークと同点のときは、重い（S・Aが多い）パーク・人気のパークほど混む日を避ける
  */
-export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[], focusParks: readonly ParkId[] = [], crowd: CrowdFeed | null = null): ParkId[] {
+export function chooseParkOrder(
+  entries: readonly Entry[],
+  dates: readonly string[],
+  focusParks: readonly ParkId[] = [],
+  crowd: CrowdFeed | null = null,
+  fixed: FixedParks = {},
+): ParkId[] {
   const weight = (p: ParkId): number => entries.filter((e) => e.ride.park === p).reduce((s, e) => s + RANK_WEIGHT[e.rank], 0) + 1;
   const mainDates = dates.slice(0, PARK_IDS.length);
   // 比べる順: スター・ウォーズの日の禁止 → 第1優先の日の混雑 → 第2優先 → … → 全体の負担
@@ -137,8 +148,13 @@ export function chooseParkOrder(entries: readonly Entry[], dates: readonly strin
     }
     return false;
   };
+  // 2人が手で決めた日はそのまま。残りの日に、残りのパークを割り当てる
+  const used = new Set(mainDates.flatMap((d) => (fixed[d] ? [fixed[d]] : [])));
+  const freeParks = PARK_IDS.filter((p) => !used.has(p));
   let best: { order: ParkId[]; key: number[] } | null = null;
-  for (const order of permutations(PARK_IDS)) {
+  for (const perm of permutations(freeParks)) {
+    let k = 0;
+    const order = mainDates.map((d) => fixed[d] ?? perm[k++] ?? "MK");
     const key = keyOf(order);
     if (!best || less(key, best.key)) best = { order, key };
   }
@@ -242,7 +258,7 @@ export function buildPlan(
   consensus: readonly ConsensusItem[],
   rideById: (id: string) => Ride | undefined,
   dates: readonly string[],
-  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null } = {},
+  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null; fixedParks?: FixedParks } = {},
 ): Plan {
   const skip = new Set((opts.excluded ?? []).map((e) => e.rideId));
   const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
@@ -253,7 +269,7 @@ export function buildPlan(
   pool.sort((a, b) => RANK_WEIGHT[b.rank] - RANK_WEIGHT[a.rank] || a.order - b.order);
 
   const focusParks = opts.focusParks ?? [];
-  const order = chooseParkOrder(pool, dates, focusParks, opts.crowd ?? null);
+  const order = chooseParkOrder(pool, dates, focusParks, opts.crowd ?? null, opts.fixedParks ?? {});
   return placeAll(pool, order, dates, focusParks, skip, rideById, opts);
 }
 
@@ -262,14 +278,14 @@ export function parkOrderFor(
   consensus: readonly ConsensusItem[],
   rideById: (id: string) => Ride | undefined,
   dates: readonly string[],
-  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null } = {},
+  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null; fixedParks?: FixedParks } = {},
 ): ParkId[] {
   const skip = new Set((opts.excluded ?? []).map((e) => e.rideId));
   const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
     const ride = skip.has(c.rideId) ? undefined : rideById(c.rideId);
     return ride ? [{ ride, rank: c.rank, order }] : [];
   });
-  return chooseParkOrder(pool, dates, opts.focusParks ?? [], opts.crowd ?? null);
+  return chooseParkOrder(pool, dates, opts.focusParks ?? [], opts.crowd ?? null, opts.fixedParks ?? {});
 }
 
 function placeAll(
@@ -279,7 +295,7 @@ function placeAll(
   focusParks: readonly ParkId[],
   skip: ReadonlySet<string>,
   rideById: (id: string) => Ride | undefined,
-  opts: { excluded?: readonly ExcludedItem[] },
+  opts: { excluded?: readonly ExcludedItem[]; fixedParks?: FixedParks },
 ): Plan {
   const days: DayPlan[] = dates.slice(0, PARK_IDS.length).map((date, i) => {
     const park = order[i] ?? "MK";
@@ -296,7 +312,7 @@ function placeAll(
     const sCount = (p: ParkId): number => pool.filter((e) => e.rank === "S" && e.ride.park === p && e.ride.kind !== "dining").length;
     // 本命パークは、残りが同じなら優先（本命の取りこぼし回収・もう一度乗る）
     const focusBonus = (p: ParkId): number => (focusParks.includes(p) ? PARK_IDS.length - focusParks.indexOf(p) : 0);
-    const park = [...PARK_IDS].sort((a, b) => left(b) - left(a) || focusBonus(b) - focusBonus(a) || sCount(b) - sCount(a))[0] ?? "MK";
+    const park = opts.fixedParks?.[reserveDate] ?? [...PARK_IDS].sort((a, b) => left(b) - left(a) || focusBonus(b) - focusBonus(a) || sCount(b) - sCount(a))[0] ?? "MK";
     const reserve: DayPlan = { date: reserveDate, morningPark: park, eveningPark: park, items: [] };
     placeParkDay(reserve, pool, placed, { allowB: false });
     days.push(reserve);
@@ -313,6 +329,7 @@ function placeAll(
     days: days.map((d) => ({ ...d, items: sortItems(d.items) })),
     updatedBy: null,
     updatedAt: null,
+    ...(opts.fixedParks && Object.keys(opts.fixedParks).length > 0 ? { fixedParks: { ...opts.fixedParks } } : {}),
     ...(focusParks.length > 0 ? { focusParks: [...focusParks] } : {}),
     ...(opts.excluded && opts.excluded.length > 0 ? { excluded: [...opts.excluded] } : {}),
   };
@@ -459,6 +476,12 @@ export function parsePlan(data: unknown): Plan {
     ...(excluded.length > 0 ? { excluded } : {}),
     ...(focusParks.length > 0 ? { focusParks } : {}),
     ...(d.dropLow === true ? { dropLow: true as const } : {}),
+    ...(() => {
+      const raw = typeof d.fixedParks === "object" && d.fixedParks !== null ? (d.fixedParks as Record<string, unknown>) : {};
+      const fp: FixedParks = {};
+      for (const [k, v] of Object.entries(raw)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && isPark(v)) fp[k] = v;
+      return Object.keys(fp).length > 0 ? { fixedParks: fp } : {};
+    })(),
     ...(Array.isArray(d.keptLow) && d.keptLow.some((x: unknown) => typeof x === "string") ? { keptLow: d.keptLow.filter((x: unknown): x is string => typeof x === "string") } : {}),
     updatedBy: d.updatedBy === "toshi" || d.updatedBy === "tsuma" ? d.updatedBy : null,
     updatedAt: typeof d.updatedAt === "number" ? d.updatedAt : null,
