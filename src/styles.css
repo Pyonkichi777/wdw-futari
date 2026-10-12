@@ -2297,7 +2297,8 @@ button.glass {
   .sync.ok { color: #9fe0b5; }
   .sync.pending { color: #ffd27a; }
 }
-.excluded-list summary {
+.excluded-list summary,
+.left-list summary {
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -2339,4 +2340,125 @@ button.glass {
 }
 .plan-check .fix-all {
   margin-top: 8px;
+}
+
+/* 作戦: 日付ジャンプ（上に貼りつく） */
+.day-jump {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 6px -16px 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.day-jump::-webkit-scrollbar {
+  display: none;
+}
+.day-jump .jump {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.day-jump .jump small {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.day-jump .jump.park-MK { border-bottom: 3px solid #4f8cff; }
+.day-jump .jump.park-EP { border-bottom: 3px solid #8e6bff; }
+.day-jump .jump.park-HS { border-bottom: 3px solid #ff4f6d; }
+.day-jump .jump.park-AK { border-bottom: 3px solid #2fa35a; }
+.day-jump .jump.today { outline: 2px solid var(--gold); }
+.day-jump .jump.red { color: #b3123d; font-weight: 800; }
+.plan-day,
+.plan-check {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+}
+
+/* 作戦: 予約の段取り（①②③…） */
+.rsv-next {
+  margin: 10px 0 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 0.9rem;
+}
+.rsv-step {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.rsv-step h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+.rsv-step-no {
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+.rsv-step.is-done h4 {
+  opacity: 0.6;
+}
+.rsv-when {
+  margin: 4px 0;
+  font-weight: 700;
+  font-size: 0.88rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+.rsv-left {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.rsv-tips,
+.rsv-notes {
+  margin: 4px 0 6px;
+  padding-left: 1.2em;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.rsv-notes {
+  color: var(--text);
+}
+ol.rsv-list {
+  counter-reset: none;
+}
+.rsv-list span.rsv-order {
+  display: inline;
+  color: var(--accent);
+}
+.rsv-list small.hard {
+  color: #b3123d;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .rsv-list small.hard,
+  .day-jump .jump.red {
+    color: #ffb3c2;
+  }
 }

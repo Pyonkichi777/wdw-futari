@@ -28,7 +28,7 @@ import {
 import { checkPlan, fixAllReds } from "../lib/planChecks";
 import { applyFix } from "../lib/planFixes";
 import { routeDay } from "../lib/route";
-import { reservationTasks } from "../lib/reservations";
+import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
@@ -71,6 +71,7 @@ function methodsFor(r: Ride): Method[] {
 export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
+  const [leftOpen, setLeftOpen] = useState(false);
   const today = todayInOrlando();
   const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...change(p), updatedBy: me, updatedAt: Date.now() }));
   const rankOf = (id: string): Rank | undefined => consensus.items.find((c) => c.rideId === id)?.rank;
@@ -146,11 +147,13 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
         </p>
       )}
 
+      <DayJump days={plan.days} today={today} reds={reds.length} left={left.length} onLeft={() => setLeftOpen(true)} />
+
       <WhereNow plan={plan} onHere={setHere} />
 
       <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} />
 
-      <div className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
+      <div id="plan-check" className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
         <ul>
           {warnings.map((w, i) => (
@@ -213,8 +216,11 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
       ))}
 
       {left.length > 0 && (
-        <div className="plan-day">
-          <h3>📦 どの日にも入っていないもの（{left.length}件）</h3>
+        <details className="plan-day left-list" id="plan-left" open={leftOpen} onToggle={(e) => setLeftOpen(e.currentTarget.open)}>
+          <summary>
+            <strong>📦 どの日にも入っていないもの（{left.length}件）</strong>
+            <span className="note">{leftOpen ? "押すと閉じます" : "押すと開きます。押して日に入れられます"}</span>
+          </summary>
           <ul className="plan-items">
             {left.map((c) => {
               const r = rideById(c.rideId);
@@ -237,7 +243,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
               );
             })}
           </ul>
-        </div>
+        </details>
       )}
 
       <ExcludedList plan={plan} rankOf={rankOf} onRestore={(ids) => save((p) => ids.reduce((acc, id) => restoreItem(acc, id, (x) => rideById(x)?.park), p))} />
@@ -295,7 +301,7 @@ function DayCard({
 }) {
   const isReserve = day.date === TRIP.parkDays[TRIP.parkDays.length - 1];
   return (
-    <div className={`plan-day park-${day.morningPark}${here !== null ? " today" : ""}`}>
+    <div id={`plan-day-${day.date}`} className={`plan-day park-${day.morningPark}${here !== null ? " today" : ""}`}>
       <div className="plan-day-head">
         <h3>
           {dayLabel(day.date)}
@@ -618,52 +624,142 @@ const NEED_FILTERS: readonly { id: NeedFilter; label: string }[] = [
 
 function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks: Checks; onCheck: (id: string, done: boolean) => void; votes: AllVotes }) {
   const [need, setNeed] = useState<NeedFilter>("ALL");
-  const all = reservationTasks(plan, rideById).map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) }));
+  const steps = bookingSteps(plan, rideById).map((st) => ({ ...st, tasks: st.tasks.map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) })) }));
+  const all = steps.flatMap((st) => st.tasks).filter((t) => t.kind !== "prep");
   if (all.length === 0) return null;
-  const tasks = all.filter((t) => (need === "ALL" ? true : need === "optional" ? t.kind === "singleOptional" : t.kind !== "singleOptional" && t.need === need));
-  const left = all.filter((t) => checks[t.id] === undefined && t.kind !== "singleOptional").length;
+  const match = (t: (typeof all)[number]): boolean =>
+    need === "ALL" ? true : t.kind === "prep" ? false : need === "optional" ? t.kind === "singleOptional" : t.kind !== "singleOptional" && t.need === need;
+  const countOf = (f: NeedFilter): number => (f === "ALL" ? all.length : f === "optional" ? all.filter((t) => t.kind === "singleOptional").length : all.filter((t) => t.kind !== "singleOptional" && t.need === f).length);
+  const todo = steps.flatMap((st) => st.tasks).filter((t) => checks[t.id] === undefined && t.kind !== "singleOptional");
+  const next = todo[0];
+  let no = 0;
   return (
-    <details className="plan-day rsv-panel" open={left > 0}>
+    <details className="plan-day rsv-panel" id="plan-rsv" open={todo.length > 0}>
       <summary>
-        <strong>📅 事前の予約・購入が必要なもの</strong>
-        <span className={left > 0 ? "rsv todo" : "rsv done"}>{left > 0 ? `残り${left}件` : "すべて済み"}</span>
+        <strong>📅 事前の予約・購入（いつ・何を・どの順番で）</strong>
+        <span className={todo.length > 0 ? "rsv todo" : "rsv done"}>{todo.length > 0 ? `残り${todo.length}件` : "すべて済み"}</span>
       </summary>
+      {next && (
+        <p className="rsv-next">
+          👉 次にやること: <strong>{next.title}</strong>
+        </p>
+      )}
       <div className="chips wrap" role="group" aria-label="必須度で絞り込む">
         {NEED_FILTERS.map((f) => (
           <button key={f.id} aria-pressed={need === f.id} className={need === f.id ? "chip on" : "chip"} onClick={() => setNeed(f.id)}>
             {f.label}
-            <span className="vs-num">{f.id === "ALL" ? all.length : f.id === "optional" ? all.filter((t) => t.kind === "singleOptional").length : all.filter((t) => t.kind !== "singleOptional" && t.need === f.id).length}</span>
+            <span className="vs-num">{countOf(f.id)}</span>
           </button>
         ))}
       </div>
-      <ul className="rsv-list">
-        {tasks.length === 0 && <li className="empty">この条件に当てはまるものはありません。</li>}
-        {tasks.map((t) => {
-          const done = checks[t.id];
-          return (
-            <li key={t.id} className={done ? "is-done" : undefined}>
-              <label>
-                <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
-                <span>
-                  <strong>{t.title}</strong>
-                  {t.kind !== "singleOptional" && <small className={`need need-${t.need}`}>{NECESSITY_LABEL[t.need]}</small>}
-                  <small>{t.detail}</small>
-                  <small>予約開始: {t.opens}</small>
-                  {done && (
-                    <small className="rsv-by">
-                      ✓ {done.by === "toshi" ? "Toshi" : "妻"}が対応済み（{new Date(done.at).toLocaleDateString("ja-JP")}）
-                    </small>
-                  )}
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="note">作戦を変えると、この一覧も自動で変わります（チェックは残ります）。</p>
+      {steps.map((st, i) => {
+        const shown = st.tasks.filter(match);
+        if (need !== "ALL" && shown.length === 0) return null;
+        const doneAll = st.tasks.length > 0 && st.tasks.every((t) => checks[t.id] !== undefined || t.kind === "singleOptional");
+        const left = st.at ? daysUntil(st.at) : null;
+        return (
+          <section key={st.id} className={doneAll ? "rsv-step is-done" : "rsv-step"}>
+            <h4>
+              <span className="rsv-step-no">{STEP_NO[i] ?? i + 1}</span>
+              {st.title}
+              {doneAll && <span className="rsv done">済み</span>}
+            </h4>
+            <p className="rsv-when">
+              🕗 {st.when}
+              {left !== null && <span className="rsv-left">{left > 0 ? `あと${left}日` : "受付中"}</span>}
+            </p>
+            <ul className="rsv-tips">
+              {st.tips.map((tip) => (
+                <li key={tip}>{tip}</li>
+              ))}
+            </ul>
+            {shown.length > 0 && (
+              <ol className="rsv-list">
+                {shown.map((t) => {
+                  const done = checks[t.id];
+                  no += 1;
+                  return (
+                    <li key={t.id} className={done ? "is-done" : undefined}>
+                      <label>
+                        <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
+                        <span>
+                          <strong>
+                            <span className="rsv-order">{no}.</span> {t.title}
+                          </strong>
+                          {t.kind === "dining" && isHardToBook(t.rideIds[0] ?? "") && <small className="hard">🔥 取りにくい店。いちばん先に</small>}
+                          {t.kind !== "singleOptional" && t.kind !== "prep" && <small className={`need need-${t.need}`}>{NECESSITY_LABEL[t.need]}</small>}
+                          <small>{t.detail}</small>
+                          {done && (
+                            <small className="rsv-by">
+                              ✓ {done.by === "toshi" ? "Toshi" : "妻"}が対応済み（{new Date(done.at).toLocaleDateString("ja-JP")}）
+                            </small>
+                          )}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {st.notes.length > 0 && (
+              <ul className="rsv-notes">
+                {st.notes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+      <p className="note">作戦を変えると、この一覧も自動で変わります（チェックは残ります）。🔥の店は一般的な傾向です。</p>
     </details>
   );
 }
+
+const PARK_SHORT: Record<ParkId, string> = { MK: "マジック", EP: "エプコット", HS: "スタジオ", AK: "アニマル" };
+
+/** 押すとその場所へ飛ぶ。閉じている折りたたみは開いてから飛ぶ */
+function jumpTo(id: string): void {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el instanceof HTMLDetailsElement) el.open = true;
+  requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+/** 日付ジャンプ（画面の上に貼りつく） */
+function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]; today: string; reds: number; left: number; onLeft: () => void }) {
+  return (
+    <nav className="day-jump" aria-label="日付へジャンプ">
+      {reds > 0 && (
+        <button className="jump red" onClick={() => jumpTo("plan-check")}>
+          🔴{reds}
+        </button>
+      )}
+      <button className="jump" onClick={() => jumpTo("plan-rsv")}>
+        📅予約
+      </button>
+      {days.map((d) => (
+        <button key={d.date} className={`jump park-${d.morningPark}${d.date === today ? " today" : ""}`} onClick={() => jumpTo(`plan-day-${d.date}`)}>
+          <strong>{`${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`}</strong>
+          <small>{PARK_SHORT[d.morningPark]}</small>
+        </button>
+      ))}
+      {left > 0 && (
+        <button
+          className="jump"
+          onClick={() => {
+            onLeft();
+            jumpTo("plan-left");
+          }}
+        >
+          📦{left}
+        </button>
+      )}
+    </nav>
+  );
+}
+
+const STEP_NO = ["①", "②", "③", "④", "⑤", "⑥"];
 
 /** 本命パーク（いちばん空いている日に置き、予備日も優先する） */
 function FocusPicker({ value, onChange }: { value: ParkId | ""; onChange: (p: ParkId | "") => void }) {

@@ -11,24 +11,33 @@ export const BOOKING_DAYS_BEFORE = 60;
 export const LL_DAYS_BEFORE = 7;
 
 /**
- * チェックイン日の daysBefore 日前・米東部 etHour 時を、日本時間の文字列にする。
+ * チェックイン日の daysBefore 日前・米東部 etHour 時（その瞬間の日時）。
  * checkIn は "YYYY-MM-DD"。米東部の夏時間かどうかは Intl に任せる
  */
-export function opensJst(checkIn: string, daysBefore: number, etHour: number): string {
+export function opensAt(checkIn: string, daysBefore: number, etHour: number): Date {
   const [y, m, d] = checkIn.split("-").map(Number) as [number, number, number];
   const day = new Date(Date.UTC(y, m - 1, d - daysBefore));
   // その日の米東部の時差（夏時間なら4時間、標準時間なら5時間）を、正午の時刻から求める
   const probe = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12));
   const probeEt = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(probe));
   const offset = 12 - probeEt;
-  const opens = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), etHour + offset));
-  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(opens);
+  return new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), etHour + offset));
+}
+
+/** 日本時間の表示（例: 2027年3月1日(月) 20:00） */
+export const jstText = (at: Date): string =>
+  new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(at);
+
+export function opensJst(checkIn: string, daysBefore: number, etHour: number): string {
+  return jstText(opensAt(checkIn, daysBefore, etHour));
 }
 
 /** レストラン予約の開始（チェックイン60日前・米東部6時） */
+export const bookingOpensAt = (checkIn: string): Date => opensAt(checkIn, BOOKING_DAYS_BEFORE, 6);
 export const bookingOpensJst = (checkIn: string): string => opensJst(checkIn, BOOKING_DAYS_BEFORE, 6);
 
 /** Lightning Lane 予約の開始（チェックイン7日前・米東部7時） */
+export const lightningLaneOpensAt = (checkIn: string): Date => opensAt(checkIn, LL_DAYS_BEFORE, 7);
 export const lightningLaneOpensJst = (checkIn: string): string => opensJst(checkIn, LL_DAYS_BEFORE, 7);
 
 const BOOKING_TEXT: Record<DiningInfo["booking"], (walkUp: boolean) => string> = {
