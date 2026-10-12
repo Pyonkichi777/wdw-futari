@@ -1,3 +1,4 @@
+import { fetchHoursFeed, type HoursFeed } from "./lib/hours";
 import { fetchCrowdFeed, type CrowdFeed } from "./lib/crowd";
 import { useEffect, useMemo, useState } from "react";
 import { ConsensusScreen } from "./components/ConsensusScreen";
@@ -154,6 +155,18 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       alive = false;
     };
   }, []);
+  // 公式の営業時間（public/hours.json。公開されるまでは開園9:00と仮定）
+  const [hours, setHours] = useState<HoursFeed | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchHoursFeed().then(
+      (f) => alive && setHours(f),
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -258,6 +271,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
             onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
             crowd={crowd}
+            hours={hours}
           />
         )}
         {tab === "news" && <NewsScreen />}

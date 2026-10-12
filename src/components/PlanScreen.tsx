@@ -29,6 +29,7 @@ import {
 } from "../lib/plan";
 import { checkPlan, fixAllReds } from "../lib/planChecks";
 import { clock, dayTimes } from "../lib/bookTimes";
+import type { HoursFeed } from "../lib/hours";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
@@ -56,6 +57,8 @@ interface Props {
   onZukan: (rideId: string, anchor: string) => void;
   /** 混雑予想サイトから取り込んだ値（まだ無ければ null） */
   crowd: CrowdFeed | null;
+  /** 公式の営業時間（まだ公開されていなければ null） */
+  hours: HoursFeed | null;
 }
 
 const parkDayLabels = ITINERARY.filter((d) => d.park).map((d) => d.date);
@@ -76,7 +79,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd }: Props) {
+export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd, hours }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -175,7 +178,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
 
       <WhereNow plan={plan} onHere={setHere} />
 
-      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} />
+      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} hours={hours} />
 
       <div id="plan-check" className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
@@ -260,6 +263,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           }}
           onZukan={onZukan}
           crowd={crowd}
+          hours={hours}
           days={plan.days}
         />
       ))}
@@ -329,6 +333,7 @@ function DayCard({
   onRemove,
   onZukan,
   crowd,
+  hours,
 }: {
   day: DayPlan;
   days: readonly DayPlan[];
@@ -347,6 +352,7 @@ function DayCard({
   onRemove: (id: string) => void;
   onZukan: (rideId: string, anchor: string) => void;
   crowd: CrowdFeed | null;
+  hours: HoursFeed | null;
 }) {
   const isReserve = day.date === TRIP.parkDays[TRIP.parkDays.length - 1];
   return (
@@ -384,6 +390,7 @@ function DayCard({
       </div>
       <DayTimeline
         day={day}
+        hours={hours}
         here={here}
         render={(it, r, minutes, time) => (
           <>
@@ -425,9 +432,20 @@ function DayCard({
 }
 
 /** 1日の流れ: 📍パーク → 項目（所要時間つき）→ 🚌移動 → … */
-function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTEL" | null; render: (it: PlanItem, r: Ride, minutes: number, time: string | undefined) => ReactNode }) {
+function DayTimeline({
+  day,
+  hours,
+  here,
+  render,
+}: {
+  day: DayPlan;
+  hours: HoursFeed | null;
+  here: ParkId | "HOTEL" | null;
+  render: (it: PlanItem, r: Ride, minutes: number, time: string | undefined) => ReactNode;
+}) {
   const { segments, totalMinutes } = dayTimeline(day, rideById);
-  const times = dayTimes(day, rideById);
+  const times = dayTimes(day, rideById, hours);
+  const official = hours?.days[day.date]?.[day.morningPark];
   const early = day.items.some((i) => i.method === "early");
   let lastSlot: Slot | null = null;
   return (
@@ -437,7 +455,12 @@ function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTE
       </p>
       <p className="plan-clock">
         {day.items.length > 0 ? `🕗 ${clock(times.start)} パーク着（${early ? "開園前入園" : "開園"}）→ 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着` : "🕗 まだ予定がありません"}
-        <small>時刻は目安。予約の「選ぶ時間枠」と同じ計算です（開園は9:00と仮定）</small>
+        <small>
+          {official
+            ? `公式の営業時間 ${official.early ? `開園前入園 ${official.early}・` : ""}開園 ${official.open}〜閉園 ${official.close}（${hours?.fetchedAt}取得）で計算。`
+            : "公式の営業時間がまだ出ていないため、開園9:00（開園前入園8:30）と仮定。"}
+          予約の「選ぶ時間枠」と同じ計算です
+        </small>
       </p>
       <ul className="plan-items timeline">
         {segments.map((seg, i) => {
@@ -717,15 +740,17 @@ function ReservationPanel({
   onCheck,
   votes,
   onZukan,
+  hours,
 }: {
   plan: Plan;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
   votes: AllVotes;
   onZukan: (rideId: string, anchor: string) => void;
+  hours: HoursFeed | null;
 }) {
   const [need, setNeed] = useState<NeedFilter>("ALL");
-  const steps = bookingSteps(plan, rideById).map((st) => ({ ...st, tasks: st.tasks.map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) })) }));
+  const steps = bookingSteps(plan, rideById, hours).map((st) => ({ ...st, tasks: st.tasks.map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) })) }));
   const all = steps.flatMap((st) => st.tasks).filter((t) => t.kind !== "prep");
   if (all.length === 0) return null;
   const match = (t: (typeof all)[number]): boolean =>

@@ -1,6 +1,7 @@
 import type { Ride } from "../types";
 import type { DayPlan } from "./plan";
 import { dayTimeline } from "./timing";
+import { toMinutes, type HoursFeed } from "./hours";
 
 /**
  * 予約するときに選ぶ「時間枠」のおすすめ（作戦の流れから逆算した目安）。
@@ -24,14 +25,21 @@ export interface TimeHint {
   text: string;
 }
 
-export const timeHints = (day: DayPlan, rideById: (id: string) => Ride | undefined): Map<string, TimeHint> => dayTimes(day, rideById).hints;
+export const timeHints = (day: DayPlan, rideById: (id: string) => Ride | undefined, hours?: HoursFeed | null): Map<string, TimeHint> => dayTimes(day, rideById, hours).hints;
 
 /** 1日の時刻の目安: パークに着く時刻・各項目の時刻・ホテルに戻る時刻 */
-export function dayTimes(day: DayPlan, rideById: (id: string) => Ride | undefined): { start: number; end: number; hints: Map<string, TimeHint> } {
+export function dayTimes(
+  day: DayPlan,
+  rideById: (id: string) => Ride | undefined,
+  hours?: HoursFeed | null,
+): { start: number; end: number; hints: Map<string, TimeHint>; official: boolean } {
   const out = new Map<string, TimeHint>();
   const { segments } = dayTimeline(day, rideById);
   const hasEarly = day.items.some((i) => i.method === "early");
-  const start = hasEarly ? EARLY_OPEN : OPEN;
+  // 公式の営業時間が出ていればそれを使う（開園前入園は公式の時刻、なければ開園の30分前）
+  const h = hours?.days[day.date]?.[day.morningPark];
+  const open = h ? toMinutes(h.open) : OPEN;
+  const start = hasEarly ? (h?.early ? toMinutes(h.early) : h ? open - 30 : EARLY_OPEN) : open;
   let t = start;
   let arrived = false;
   for (const seg of segments) {
@@ -68,5 +76,5 @@ export function dayTimes(day: DayPlan, rideById: (id: string) => Ride | undefine
     }
     t += minutes;
   }
-  return { start, end: t, hints: out };
+  return { start, end: t, hints: out, official: h !== undefined };
 }

@@ -3,6 +3,7 @@ import type { Ride } from "../types";
 import { bookingOpensAt, bookingOpensJst, jstText, lightningLaneOpensAt, lightningLaneOpensJst } from "./dining";
 import type { Plan } from "./plan";
 import { timeHints } from "./bookTimes";
+import type { HoursFeed } from "./hours";
 
 /** 事前に予約・購入が必要なもの（作戦から自動で作る） */
 export interface ReservationTask {
@@ -23,11 +24,11 @@ const WD = ["日", "月", "火", "水", "木", "金", "土"];
 const md = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}(${WD[new Date(`${iso}T12:00:00Z`).getUTCDay()]})`;
 const MEAL: Record<string, string> = { am: "朝食", early: "朝食", lunch: "昼食", pm: "昼食", dinner: "夕食", night: "夕食" };
 
-export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | undefined): ReservationTask[] {
+export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | undefined, hours?: HoursFeed | null): ReservationTask[] {
   const out: ReservationTask[] = [];
   const llOpens = `${lightningLaneOpensJst(TRIP.checkIn)}（日本時間）`;
   for (const d of plan.days) {
-    const hints = timeHints(d, rideById);
+    const hints = timeHints(d, rideById, hours);
     const hint = (id: string): string => hints.get(id)?.text ?? "";
     const multi = d.items.filter((i) => i.method === "multi").flatMap((i) => rideById(i.rideId) ?? []);
     if (multi.length > 0 || d.items.some((i) => i.method === "multiExtra")) {
@@ -113,8 +114,8 @@ const PREP_TASKS: ReservationTask[] = [
  * いつ・何を・どの順番で予約するか。
  * ① 準備 → ② 食事（取りにくい店から）→ ③ ホテルのレストラン → ④ 時短パス（Single Pass → Multi Pass → 保険）→ ⑤ 当日
  */
-export function bookingSteps(plan: Plan, rideById: (id: string) => Ride | undefined): BookingStep[] {
-  const tasks = reservationTasks(plan, rideById);
+export function bookingSteps(plan: Plan, rideById: (id: string) => Ride | undefined, hours?: HoursFeed | null): BookingStep[] {
+  const tasks = reservationTasks(plan, rideById, hours);
   const diningAt = bookingOpensAt(TRIP.checkIn);
   const llAt = lightningLaneOpensAt(TRIP.checkIn);
   const rideOf = (t: ReservationTask): string => t.rideIds[0] ?? "";

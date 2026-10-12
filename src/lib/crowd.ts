@@ -39,8 +39,12 @@ export interface CrowdFeed {
   source: { name: string; url: string };
   /** 取得した日（YYYY-MM-DD） */
   fetchedAt: string;
-  /** 値の意味の説明（例: 「Thrill Data の予想混雑度（1〜10）」） */
+  /** 値の意味の説明 */
   method: string;
+  /** 値の最大（10 なら 1〜10、100 なら 0〜100%） */
+  scale: number;
+  /** 段階の下限 [ふつう, 混む, とても混む]（出典の区分に合わせる） */
+  bands: [number, number, number];
   days: Record<string, Partial<Record<ParkId, number>>>;
 }
 
@@ -52,6 +56,9 @@ export function parseCrowdFeed(data: unknown): CrowdFeed | null {
   const o = data as Record<string, unknown>;
   const src = (typeof o.source === "object" && o.source !== null ? o.source : {}) as Record<string, unknown>;
   if (typeof src.name !== "string" || typeof src.url !== "string" || !src.url.startsWith("https://")) return null;
+  const scale = o.scale === 100 ? 100 : 10;
+  const rb = Array.isArray(o.bands) && o.bands.length === 3 && o.bands.every((x) => typeof x === "number") ? (o.bands as [number, number, number]) : null;
+  const bands: [number, number, number] = rb ?? (scale === 100 ? [40, 60, 80] : [4, 6, 8]);
   const rawDays = (typeof o.days === "object" && o.days !== null ? o.days : {}) as Record<string, unknown>;
   const days: CrowdFeed["days"] = {};
   for (const [date, v] of Object.entries(rawDays)) {
@@ -59,12 +66,12 @@ export function parseCrowdFeed(data: unknown): CrowdFeed | null {
     const row: Partial<Record<ParkId, number>> = {};
     for (const k of PARK_KEYS) {
       const n = (v as Record<string, unknown>)[k];
-      if (typeof n === "number" && n >= 1 && n <= 10) row[k] = n;
+      if (typeof n === "number" && n >= (scale === 100 ? 0 : 1) && n <= scale) row[k] = n;
     }
     if (Object.keys(row).length > 0) days[date] = row;
   }
   if (Object.keys(days).length === 0) return null;
-  return { source: { name: src.name, url: src.url }, fetchedAt: typeof o.fetchedAt === "string" ? o.fetchedAt : "", method: typeof o.method === "string" ? o.method : "", days };
+  return { source: { name: src.name, url: src.url }, fetchedAt: typeof o.fetchedAt === "string" ? o.fetchedAt : "", method: typeof o.method === "string" ? o.method : "", scale, bands, days };
 }
 
 /** public/crowd.json を読む（まだ無ければ null） */
@@ -74,18 +81,18 @@ export async function fetchCrowdFeed(): Promise<CrowdFeed | null> {
   return parseCrowdFeed(await res.json().catch(() => null));
 }
 
-/** 1〜10 の値 → 段階（推定の点数と同じ物差しに直す） */
-const levelOf10 = (v: number): CrowdLevel => (v <= 3 ? "low" : v <= 5 ? "mid" : v <= 7 ? "high" : "peak");
+/** 出典の値 → 段階（出典の区分どおり） */
+const levelOf = (v: number, bands: readonly [number, number, number]): CrowdLevel => (v < bands[0] ? "low" : v < bands[1] ? "mid" : v < bands[2] ? "high" : "peak");
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function crowdInfo(park: ParkId, iso: string, feed?: CrowdFeed | null): CrowdInfo {
   const v = feed?.days[iso]?.[park];
   if (feed && v !== undefined) {
-    const reasons = [`${feed.source.name}の予想 ${v}/10`];
+    const reasons = [`${feed.source.name}の予想 ${feed.scale === 100 ? `${Math.round(v)}%` : `${v}/10`}`];
     if (park === "HS" && iso === STAR_WARS_DAY) reasons.push("スター・ウォーズの日");
     // 推定の点数（だいたい1.3〜8）と同じくらいの幅にそろえる
-    return { score: v * 0.8, level: levelOf10(v), reasons, basis: "data" };
+    return { score: (v / feed.scale) * 8, level: levelOf(v, feed.bands), reasons, basis: "data" };
   }
   const wd = weekday(iso);
   let score = (DAY_CROWD[wd] ?? 3) + PARK_ADJ[park];
