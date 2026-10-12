@@ -27,6 +27,7 @@ import {
 import type { Consensus, ConsensusItem, PersonId, Rank, VoteLevel, Votes } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
+import { parsePlan } from "./plan";
 import type { AuthUser, Store } from "./store";
 
 export interface FirebaseBackend {
@@ -158,6 +159,13 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     },
     async saveConsensus(c) {
       await setDoc(doc(fb.db, "consensus", "main"), c);
+    },
+    // 作戦は合意リストと同じ consensus コレクションに置く（セキュリティルールの追加が要らない）
+    subscribePlan(cb) {
+      return onSnapshot(doc(fb.db, "consensus", "plan"), (snap) => cb(parsePlan(snap.data())));
+    },
+    async savePlan(p) {
+      await setDoc(doc(fb.db, "consensus", "plan"), JSON.parse(JSON.stringify(p)) as Record<string, unknown>);
     },
     subscribeBanner(cb) {
       return onSnapshot(

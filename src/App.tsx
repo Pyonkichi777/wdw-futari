@@ -7,6 +7,8 @@ import { TripBox } from "./components/TripBox";
 import { ScrollTopButton, scrollToTop } from "./components/ScrollTopButton";
 import { Skyline } from "./components/Skyline";
 import { DiningScreen } from "./components/DiningScreen";
+import { PlanScreen } from "./components/PlanScreen";
+import { emptyPlan, type Plan } from "./lib/plan";
 import { Encyclopedia } from "./components/Encyclopedia";
 import { NewsProvider, useNews } from "./components/NewsContext";
 import { NewsScreen } from "./components/NewsScreen";
@@ -32,13 +34,14 @@ import { createLocalStore } from "./lib/localStore";
 import { PERSON_LABEL, type AuthUser, type Store } from "./lib/store";
 import type { Consensus, PersonId } from "./types";
 
-type Tab = "zukan" | "vote" | "dining" | "consensus" | "news";
+type Tab = "zukan" | "vote" | "dining" | "consensus" | "plan" | "news";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "zukan", label: "図鑑", icon: "🏰" },
   { id: "vote", label: "投票", icon: "⭐" },
   { id: "dining", label: "食事", icon: "🍽" },
   { id: "consensus", label: "合意", icon: "💖" },
+  { id: "plan", label: "作戦", icon: "🗺" },
   { id: "news", label: "ニュース", icon: "📰" },
 ];
 
@@ -125,6 +128,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   const { unseen: urgent } = useNews();
   const [meals, setMeals] = useState<AllMeals>(emptyMeals);
   useEffect(() => store.subscribeMeals(setMeals), [store]);
+  const [plan, setPlan] = useState<Plan>(emptyPlan);
+  useEffect(() => store.subscribePlan(setPlan), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -182,6 +187,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
           />
         )}
         {tab === "dining" && <DiningScreen myVotes={votes[me]} onGoVote={(id) => jumpTo("vote", id)} />}
+        {tab === "plan" && <PlanScreen me={me} consensus={consensus} plan={plan} onSave={(p) => store.savePlan(p).catch(report)} />}
         {tab === "news" && <NewsScreen />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} meals={meals} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
