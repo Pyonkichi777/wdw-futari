@@ -2240,3 +2240,49 @@ button.glass {
   background: var(--surface);
   color: inherit;
 }
+
+/* ---- 優先度の低いもの（2人とも「どちらでも」） */
+.plan-item.low {
+  opacity: 0.62;
+  border-style: dashed;
+}
+.low-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.plan-item-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.plan-item-wrap .plan-item {
+  flex: 1;
+}
+.quick-remove {
+  flex: none;
+  min-width: 56px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #d23b55;
+  background: transparent;
+  border: 1.5px solid #f2b8c4;
+}
+.low-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+}
+.low-day {
+  margin-top: 8px;
+  width: 100%;
+}

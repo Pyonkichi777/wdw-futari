@@ -15,6 +15,7 @@ import {
   moveItem,
   needsMultiPass,
   removeItem,
+  removeItems,
   setDayParks,
   unplaced,
   type DayPlan,
@@ -29,6 +30,7 @@ import { reservationTasks } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
+import { isLowPriority } from "../lib/priority";
 import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
 import type { Consensus, ParkId, PersonId, Rank, Ride } from "../types";
 
@@ -105,6 +107,16 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
     );
   }
 
+  const isLow = (id: string): boolean => isLowPriority(votes, id);
+  const lowIds = (date?: string): Set<string> =>
+    new Set(plan.days.filter((d) => !date || d.date === date).flatMap((d) => d.items.map((i) => i.rideId)).filter(isLow));
+  const removeLow = (date?: string): void => {
+    const ids = lowIds(date);
+    if (ids.size === 0) return;
+    if (window.confirm(`2人とも「どちらでも」の${ids.size}件を${date ? "この日の" : "すべての日の"}作戦から外します。外したものは下の「どの日にも入っていないもの」から戻せます。よろしいですか？`)) {
+      save(removeItems(plan, ids, date));
+    }
+  };
   const warnings = checkPlan(plan, consensus.items, rideById);
   const reds = warnings.filter((w) => w.level === "red");
   const left = unplaced(plan, consensus.items);
@@ -133,12 +145,26 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
         </ul>
       </div>
 
+      {lowIds().size > 0 && (
+        <div className="low-bar">
+          <span>
+            💤 2人とも「どちらでも」が <strong>{lowIds().size}件</strong> 入っています（優先度低）
+          </span>
+          <button className="mini" onClick={() => removeLow()}>
+            全部の日からまとめて外す
+          </button>
+        </div>
+      )}
+
       {plan.days.map((d) => (
         <DayCard
           key={d.date}
           day={d}
           rankOf={rankOf}
           voteText={voteText}
+          isLow={isLow}
+          lowCount={lowIds(d.date).size}
+          onRemoveLow={() => removeLow(d.date)}
           checks={checks}
           onRoute={() => save({ ...plan, days: plan.days.map((x) => (x.date === d.date ? routeDay(x) : x)) })}
           editing={editing}
@@ -208,6 +234,9 @@ function DayCard({
   days,
   rankOf,
   voteText,
+  isLow,
+  lowCount,
+  onRemoveLow,
   checks,
   onRoute,
   editing,
@@ -221,6 +250,9 @@ function DayCard({
   days: readonly DayPlan[];
   rankOf: (id: string) => Rank | undefined;
   voteText: (r: Ride) => string | null;
+  isLow: (id: string) => boolean;
+  lowCount: number;
+  onRemoveLow: () => void;
   checks: Checks;
   onRoute: () => void;
   editing: string | null;
@@ -274,6 +306,8 @@ function DayCard({
               item={it}
               minutes={minutes}
               votes={voteText(r)}
+              low={isLow(r.id)}
+              onQuickRemove={() => onRemove(r.id)}
               reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
@@ -281,6 +315,11 @@ function DayCard({
           </>
         )}
       />
+      {lowCount > 0 && (
+        <button className="mini low-day" onClick={onRemoveLow}>
+          💤 この日の「2人ともどちらでも」{lowCount}件をまとめて外す
+        </button>
+      )}
       <DayMap day={day} rankOf={rankOf} onRoute={onRoute} />
       {day.items.length === 0 && <p className="empty">{isReserve ? "予備日です。取りこぼした乗り物の回収や、もう一度乗りたいものに使います。" : "まだ何も入っていません。"}</p>}
     </div>
@@ -335,6 +374,8 @@ function ItemRow({
   minutes,
   votes,
   reserved,
+  low = false,
+  onQuickRemove,
   onClick,
 }: {
   ride: Ride;
@@ -343,10 +384,13 @@ function ItemRow({
   minutes?: number;
   votes?: string | null;
   reserved?: boolean;
+  low?: boolean;
+  onQuickRemove?: () => void;
   onClick: () => void;
 }) {
-  return (
-    <button className="plan-item" onClick={onClick}>
+  const row = (
+    <button className={low ? "plan-item low" : "plan-item"} onClick={onClick}>
+      {low && <span className="low-tag">💤 優先度低</span>}
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
       <span className="plan-item-name">{ride.nameJa}</span>
@@ -356,6 +400,15 @@ function ItemRow({
       {reserved !== undefined && <span className={reserved ? "rsv done" : "rsv todo"}>{reserved ? "✓ 予約済み" : "要予約・未"}</span>}
       {votes && <span className="plan-votes">{votes}</span>}
     </button>
+  );
+  if (!low || !onQuickRemove) return row;
+  return (
+    <div className="plan-item-wrap">
+      {row}
+      <button className="quick-remove" onClick={onQuickRemove} aria-label={`${ride.nameJa}を作戦から外す`}>
+        外す
+      </button>
+    </div>
   );
 }
 

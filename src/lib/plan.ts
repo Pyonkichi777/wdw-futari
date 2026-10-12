@@ -273,6 +273,12 @@ export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: S
   return { ...plan, days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
 }
 
+/** まとめて外す */
+export const removeItems = (plan: Plan, rideIds: ReadonlySet<string>, date?: string): Plan => ({
+  ...plan,
+  days: plan.days.map((d) => (date && d.date !== date ? d : { ...d, items: d.items.filter((i) => !rideIds.has(i.rideId)) })),
+});
+
 export const removeItem = (plan: Plan, rideId: string): Plan => ({
   ...plan,
   days: plan.days.map((d) => ({ ...d, items: d.items.filter((i) => i.rideId !== rideId) })),
