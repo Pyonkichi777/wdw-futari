@@ -20,6 +20,7 @@ import {
   restoreItem,
   setDayParks,
   unplaced,
+  parkOrderFor,
   withKept,
   type DayPlan,
   type Method,
@@ -37,7 +38,7 @@ import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
-import { isLowPriority } from "../lib/priority";
+import { isLowPriority, isVetoed } from "../lib/priority";
 import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
 import type { Consensus, ParkId, PersonId, Rank, Ride } from "../types";
 import { SLOT_LABEL as SLOT_NAMES } from "../lib/plan";
@@ -84,9 +85,13 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
   const today = todayInOrlando();
+  // どちらか1人でも「乗らない」と答えたものは、作戦に入れない（前に作った作戦からも外して表示・保存する）
+  const vetoed = (id: string): boolean => isVetoed(votes, id);
+  const items = useMemo(() => consensus.items.filter((c) => !isVetoed(votes, c.rideId)), [consensus, votes]);
+  const dropVetoed = (p: Plan): Plan => ({ ...p, days: p.days.map((d) => ({ ...d, items: d.items.filter((i) => !vetoed(i.rideId)) })) });
   // 道順はいつも「近い順」（作った直後も、手で直した後も、前に保存した作戦も）
-  const plan = useMemo(() => optimizePlan(stored), [stored]);
-  const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...optimizePlan(change(p)), updatedBy: me, updatedAt: Date.now() }));
+  const plan = useMemo(() => optimizePlan(dropVetoed(stored)), [stored, votes]);
+  const save = (change: (p: Plan) => Plan): void => onUpdate((p) => ({ ...optimizePlan(dropVetoed(change(p))), updatedBy: me, updatedAt: Date.now() }));
   const rankOf = (id: string): Rank | undefined => consensus.items.find((c) => c.rideId === id)?.rank;
 
   if (!consensus.confirmed || consensus.items.length === 0) {
@@ -102,23 +107,26 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
 
   // 本命パークも2人で共有（作戦と一緒に保存）
   const focusParks: ParkId[] = plan.focusParks ?? (plan.days.length === 0 ? ["AK"] : []);
+  /** 優先順位・混雑予想・合意リストから作戦を組み直す（外したもの・「どちらでも」の設定・予約のチェックは引き継ぐ） */
+  const rebuild = (cur: Plan, fp: readonly ParkId[]): Plan => {
+    // 外したものは作り直しても入れない（記録も引き継ぐ）。「どちらでも」をまとめて外した後なら、それも入れない
+    const base = cur.dropLow ? excludeAllLow(cur, items, (id) => isLowPriority(votes, id), rideById, me) : cur;
+    const p = buildPlan(items, rideById, TRIP.parkDays, { focusParks: fp, crowd, ...(base.excluded ? { excluded: base.excluded } : {}) });
+    return {
+      ...p,
+      days: p.days.map(routeDay),
+      ...(base.dropLow ? { dropLow: true as const } : {}),
+      ...(base.keptLow ? { keptLow: base.keptLow } : {}),
+    };
+  };
+  // 優先順位を変えたら、その場で作戦全体（日割り・乗り方・時刻・事前予約）を組み直す
   const setFocusParks = (fp: ParkId[]): void =>
     save((p) => {
+      if (p.days.length > 0) return rebuild(p, fp);
       const { focusParks: _old, ...rest } = p;
       return fp.length > 0 ? { ...rest, focusParks: fp } : rest;
     });
-  const generate = (): void =>
-    save((cur) => {
-      // 外したものは作り直しても入れない（記録も引き継ぐ）。「どちらでも」をまとめて外した後なら、それも入れない
-      const base = cur.dropLow ? excludeAllLow(cur, consensus.items, (id) => isLowPriority(votes, id), rideById, me) : cur;
-      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, crowd, ...(base.excluded ? { excluded: base.excluded } : {}) });
-      return {
-        ...p,
-        days: p.days.map(routeDay),
-        ...(base.dropLow ? { dropLow: true as const } : {}),
-        ...(base.keptLow ? { keptLow: base.keptLow } : {}),
-      };
-    });
+  const generate = (): void => save((cur) => rebuild(cur, focusParks));
   const voteText = (r: Ride): string | null => {
     const t = votes.toshi[r.id];
     const w = votes.tsuma[r.id];
@@ -154,15 +162,18 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       return;
     }
     if (window.confirm(`2人とも「どちらでも」を、すべての日の作戦から外します（今入っている${ids.size}件と、どの日にも入っていないものも）。今後は作り直しても、優先順位を変えても入りません。外したものは「🗑 外したもの」に記録され、1つずつ元に戻せます。よろしいですか？`)) {
-      save((p) => excludeAllLow(p, consensus.items, isLow, rideById, me));
+      save((p) => excludeAllLow(p, items, isLow, rideById, me));
     }
   };
-  const warnings = checkPlan(plan, consensus.items, rideById);
+  const warnings = checkPlan(plan, items, rideById);
+  // 優先順位・混雑予想が変わって、今の日割りがおすすめと違うとき
+  const best = parkOrderFor(items, rideById, TRIP.parkDays, { focusParks, crowd, ...(plan.excluded ? { excluded: plan.excluded } : {}) });
+  const stale = plan.days.slice(0, best.length).some((d, i) => d.morningPark !== best[i]) ? best : null;
   const reds = warnings.filter((w) => w.level === "red");
   const fixableReds = reds.filter((w) => w.fix).length;
   const kept = new Set(plan.keptLow ?? []);
   // 「どちらでも」をまとめて外した後は、新しく「どちらでも」になったものも作戦に出さない（次の作り直しで記録される）
-  const left = unplaced(plan, consensus.items).filter((c) => !(plan.dropLow && isLow(c.rideId) && !kept.has(c.rideId)));
+  const left = unplaced(plan, items).filter((c) => !(plan.dropLow && isLow(c.rideId) && !kept.has(c.rideId)));
 
   return (
     <section className="plan">
@@ -198,7 +209,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           ))}
         </ul>
         {fixableReds > 1 && (
-          <button className="mini fix-all" onClick={() => save((p) => fixAllReds(p, consensus.items, rideById))}>
+          <button className="mini fix-all" onClick={() => save((p) => fixAllReds(p, items, rideById))}>
             💡 おすすめどおりに🔴をまとめて直す（{fixableReds}件）
           </button>
         )}
@@ -210,15 +221,25 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           <span className="note">{focusParks.length > 0 ? focusParks.map((p, i) => `${i + 1}.${PARK_SHORT[p]}`).join(" ") : "未設定"}</span>
         </summary>
         <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} crowd={crowd} />
-        <button
-          className="primary wide"
-          onClick={() => {
-            if (window.confirm("この優先順位と混雑予想で、作戦を組み直します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。よろしいですか？")) generate();
-          }}
-        >
-          この優先順位と混雑予想で作戦を組み直す
-        </button>
+        <p className="note">優先順位を変えると、その場で作戦全体（日割り・乗り方・時刻・事前の予約）を組み直し、2人で共有します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。</p>
       </details>
+
+      {stale && (
+        <div className="stale-bar">
+          <p>
+            🔄 今の優先順位と最新の混雑予想なら、日割りは <strong>{stale.map((p, i) => `${shortDay(TRIP.parkDays[i] ?? "")} ${PARK_SHORT[p]}`).join("・")}</strong> がおすすめです（今の作戦と違います）
+          </p>
+          <button
+            className="primary"
+            onClick={() => {
+              if (window.confirm("最新の混雑予想と優先順位で、作戦全体を組み直します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。よろしいですか？")) generate();
+            }}
+          >
+            組み直す
+          </button>
+          <small>パークの日を手で変えた場合は、このままで構いません</small>
+        </div>
+      )}
 
       {lowIds().size > 0 && (
         <div className="low-bar">
@@ -854,6 +875,7 @@ function ReservationPanel({
   );
 }
 
+const shortDay = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const PARK_SHORT: Record<ParkId, string> = { MK: "マジック", EP: "エプコット", HS: "スタジオ", AK: "アニマル" };
 
 /** 押すとその場所へ飛ぶ。閉じている折りたたみは開いてから飛ぶ */

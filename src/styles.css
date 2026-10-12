@@ -2627,3 +2627,23 @@ ol.rsv-list {
 .plan-pin {
   font-size: 0.8rem;
 }
+.stale-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  border-radius: 14px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.stale-bar p {
+  flex: 1 1 14em;
+  margin: 0;
+  font-size: 0.88rem;
+}
+.stale-bar small {
+  flex: 1 0 100%;
+  font-size: 0.72rem;
+}

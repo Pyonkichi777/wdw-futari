@@ -106,22 +106,41 @@ function permutations<T>(xs: readonly T[]): T[][] {
 }
 
 /**
- * パークを回る日を決める。4パークを1日ずつ（最終日は予備日）。
- * 重い（S・Aが多い）パークほど週末を避け、ハリウッド・スタジオはスター・ウォーズの日を避ける。
+ * パークを回る日を決める。4パークを1日ずつ（最終日は予備日）。ハリウッド・スタジオはスター・ウォーズの日を避ける。
+ * - 本命パークの優先順位があれば、それを最優先: 第1優先のパークに、そのパークがいちばん空いている日を。
+ *   次に第2優先に、残りの日でいちばん空いている日を…（優先順位の順に、混雑予想の低い日を取っていく）
+ * - 優先順位のないパークと同点のときは、重い（S・Aが多い）パーク・人気のパークほど混む日を避ける
  */
 export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[], focusParks: readonly ParkId[] = [], crowd: CrowdFeed | null = null): ParkId[] {
   const weight = (p: ParkId): number => entries.filter((e) => e.ride.park === p).reduce((s, e) => s + RANK_WEIGHT[e.rank], 0) + 1;
   const mainDates = dates.slice(0, PARK_IDS.length);
-  let best: { order: ParkId[]; cost: number } | null = null;
-  for (const order of permutations(PARK_IDS)) {
+  // 比べる順: スター・ウォーズの日の禁止 → 第1優先の日の混雑 → 第2優先 → … → 全体の負担
+  const keyOf = (order: readonly ParkId[]): number[] => {
+    const dateOf = (p: ParkId): string | undefined => mainDates[order.indexOf(p)];
+    const banned = order.some((p, i) => p === "HS" && mainDates[i] === STAR_WARS_DAY) ? 1 : 0;
+    const prio = focusParks.map((p) => {
+      const d = dateOf(p);
+      return d ? Math.round(crowdScore(p, d, crowd) * 100) / 100 : 0;
+    });
     let cost = 0;
     order.forEach((park, i) => {
       const date = mainDates[i];
-      if (!date) return;
-      if (park === "HS" && date === STAR_WARS_DAY) cost += 1000;
-      cost += crowdScore(park, date, crowd) * PARK_POPULARITY[park] * weight(park) * focusFactor(park, focusParks);
+      if (date) cost += crowdScore(park, date, crowd) * PARK_POPULARITY[park] * weight(park) * focusFactor(park, focusParks);
     });
-    if (!best || cost < best.cost) best = { order, cost };
+    return [banned, ...prio, cost];
+  };
+  const less = (a: readonly number[], b: readonly number[]): boolean => {
+    for (let i = 0; i < a.length; i++) {
+      const x = a[i] ?? 0;
+      const y = b[i] ?? 0;
+      if (Math.abs(x - y) > 1e-9) return x < y;
+    }
+    return false;
+  };
+  let best: { order: ParkId[]; key: number[] } | null = null;
+  for (const order of permutations(PARK_IDS)) {
+    const key = keyOf(order);
+    if (!best || less(key, best.key)) best = { order, key };
   }
   return best ? best.order : [...PARK_IDS];
 }
@@ -235,6 +254,33 @@ export function buildPlan(
 
   const focusParks = opts.focusParks ?? [];
   const order = chooseParkOrder(pool, dates, focusParks, opts.crowd ?? null);
+  return placeAll(pool, order, dates, focusParks, skip, rideById, opts);
+}
+
+/** 今の合意リスト・優先順位・混雑予想なら、どの日にどのパークへ行くのがよいか（作戦を作り直さずに確かめる） */
+export function parkOrderFor(
+  consensus: readonly ConsensusItem[],
+  rideById: (id: string) => Ride | undefined,
+  dates: readonly string[],
+  opts: { focusParks?: readonly ParkId[]; excluded?: readonly ExcludedItem[]; crowd?: CrowdFeed | null } = {},
+): ParkId[] {
+  const skip = new Set((opts.excluded ?? []).map((e) => e.rideId));
+  const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
+    const ride = skip.has(c.rideId) ? undefined : rideById(c.rideId);
+    return ride ? [{ ride, rank: c.rank, order }] : [];
+  });
+  return chooseParkOrder(pool, dates, opts.focusParks ?? [], opts.crowd ?? null);
+}
+
+function placeAll(
+  pool: Entry[],
+  order: readonly ParkId[],
+  dates: readonly string[],
+  focusParks: readonly ParkId[],
+  skip: ReadonlySet<string>,
+  rideById: (id: string) => Ride | undefined,
+  opts: { excluded?: readonly ExcludedItem[] },
+): Plan {
   const days: DayPlan[] = dates.slice(0, PARK_IDS.length).map((date, i) => {
     const park = order[i] ?? "MK";
     return { date, morningPark: park, eveningPark: park === "AK" ? "EP" : park, items: [] };
