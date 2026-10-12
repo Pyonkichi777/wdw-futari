@@ -26,6 +26,7 @@ import {
   type Slot,
 } from "../lib/plan";
 import { checkPlan, fixAllReds } from "../lib/planChecks";
+import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo } from "../lib/crowd";
 import { applyFix } from "../lib/planFixes";
 import { routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
@@ -48,6 +49,8 @@ interface Props {
   votes: AllVotes;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
+  /** 図鑑でそのアトラクション・店を見る（anchor = 戻ってきたときに表示する場所） */
+  onZukan: (rideId: string, anchor: string) => void;
 }
 
 const parkDayLabels = ITINERARY.filter((d) => d.park).map((d) => d.date);
@@ -68,7 +71,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck }: Props) {
+export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, checks, onCheck, onZukan }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -88,16 +91,16 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
   }
 
   // 本命パークも2人で共有（作戦と一緒に保存）
-  const focus: ParkId | "" = plan.focusPark ?? (plan.days.length === 0 ? "AK" : "");
-  const setFocus = (f: ParkId | ""): void =>
+  const focusParks: ParkId[] = plan.focusParks ?? (plan.days.length === 0 ? ["AK"] : []);
+  const setFocusParks = (fp: ParkId[]): void =>
     save((p) => {
-      const { focusPark: _old, ...rest } = p;
-      return f ? { ...rest, focusPark: f } : rest;
+      const { focusParks: _old, ...rest } = p;
+      return fp.length > 0 ? { ...rest, focusParks: fp } : rest;
     });
   const generate = (): void =>
     save((cur) => {
       // 外したものは作り直しても入れない（記録も引き継ぐ）
-      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { ...(focus ? { focusPark: focus } : {}), ...(cur.excluded ? { excluded: cur.excluded } : {}) });
+      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { focusParks, ...(cur.excluded ? { excluded: cur.excluded } : {}) });
       return { ...p, days: p.days.map(routeDay) };
     });
   const voteText = (r: Ride): string | null => {
@@ -113,7 +116,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
         <h2>5日間の作戦</h2>
         <div className="empty-state">
           <p>確定した合意リストから、おすすめの5日間の作戦を自動で組みます。そのあと2人で手直しできます。</p>
-          <FocusPicker value={focus} onChange={setFocus} />
+          <FocusPicker value={focusParks} onChange={setFocusParks} plan={null} />
           <button className="primary wide" onClick={generate}>
             合意リストからおすすめの作戦を作る
           </button>
@@ -151,7 +154,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
 
       <WhereNow plan={plan} onHere={setHere} />
 
-      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} />
+      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} />
 
       <div id="plan-check" className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
@@ -176,6 +179,22 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           </button>
         )}
       </div>
+
+      <details className="plan-day focus-panel" id="plan-focus">
+        <summary>
+          <strong>⭐ 本命パークの優先順位と混雑予想</strong>
+          <span className="note">{focusParks.length > 0 ? focusParks.map((p, i) => `${i + 1}.${PARK_SHORT[p]}`).join(" ") : "未設定"}</span>
+        </summary>
+        <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} />
+        <button
+          className="primary wide"
+          onClick={() => {
+            if (window.confirm("この優先順位と混雑予想で、作戦を組み直します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。よろしいですか？")) generate();
+          }}
+        >
+          この優先順位と混雑予想で作戦を組み直す
+        </button>
+      </details>
 
       {lowIds().size > 0 && (
         <div className="low-bar">
@@ -211,6 +230,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
             save((p) => removeItem(p, id, me));
             setEditing(null);
           }}
+          onZukan={onZukan}
           days={plan.days}
         />
       ))}
@@ -226,8 +246,8 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
               const r = rideById(c.rideId);
               if (!r) return null;
               return (
-                <li key={c.rideId}>
-                  <ItemRow ride={r} rank={c.rank} item={null} onClick={() => setEditing(editing === r.id ? null : r.id)} />
+                <li key={c.rideId} id={`pi-left-${c.rideId}`}>
+                  <ItemRow ride={r} rank={c.rank} item={null} onZukan={() => onZukan(r.id, `pi-left-${r.id}`)} onClick={() => setEditing(editing === r.id ? null : r.id)} />
                   {editing === r.id && (
                     <ItemEditor
                       ride={r}
@@ -251,17 +271,6 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
       <LightningLaneSheet plan={plan} />
       <LightningLaneGuide />
 
-      <div className="plan-day">
-        <FocusPicker value={focus} onChange={setFocus} />
-        <button
-          className="link"
-          onClick={() => {
-            if (window.confirm("今の作戦を消して、合意リストからおすすめの作戦を作り直します。手で直したところは元に戻ります（予約のチェックは残ります）。よろしいですか？")) generate();
-          }}
-        >
-          この本命パークで、おすすめの作戦に作り直す
-        </button>
-      </div>
     </section>
   );
 }
@@ -282,6 +291,7 @@ function DayCard({
   onParks,
   onMove,
   onRemove,
+  onZukan,
 }: {
   day: DayPlan;
   days: readonly DayPlan[];
@@ -298,6 +308,7 @@ function DayCard({
   onParks: (p: { morningPark: ParkId; eveningPark: ParkId }) => void;
   onMove: (id: string, to: { date: string; slot: Slot; method: Method }) => void;
   onRemove: (id: string) => void;
+  onZukan: (rideId: string, anchor: string) => void;
 }) {
   const isReserve = day.date === TRIP.parkDays[TRIP.parkDays.length - 1];
   return (
@@ -308,6 +319,7 @@ function DayCard({
           {isReserve && <span className="plan-tag">予備日</span>}
           {needsMultiPass(day) && <span className="plan-tag mp">Multi Pass</span>}
         </h3>
+        <CrowdBadge park={day.morningPark} date={day.date} />
         <div className="plan-parks">
           <label>
             朝
@@ -345,6 +357,7 @@ function DayCard({
               votes={voteText(r)}
               low={isLow(r.id)}
               onQuickRemove={() => onRemove(r.id)}
+              onZukan={() => onZukan(r.id, `pi-${day.date}-${r.id}`)}
               reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
@@ -393,7 +406,7 @@ function DayTimeline({ day, here, render }: { day: DayPlan; here: ParkId | "HOTE
           const showSlot = seg.item.slot !== lastSlot;
           lastSlot = seg.item.slot;
           return (
-            <li key={seg.item.rideId}>
+            <li key={seg.item.rideId} id={`pi-${day.date}-${seg.item.rideId}`}>
               {showSlot && <p className="plan-slot-label">{SLOT_LABEL[seg.item.slot]}</p>}
               {render(seg.item, seg.ride, seg.minutes)}
             </li>
@@ -413,6 +426,7 @@ function ItemRow({
   reserved,
   low = false,
   onQuickRemove,
+  onZukan,
   onClick,
 }: {
   ride: Ride;
@@ -423,6 +437,7 @@ function ItemRow({
   reserved?: boolean;
   low?: boolean;
   onQuickRemove?: () => void;
+  onZukan?: () => void;
   onClick: () => void;
 }) {
   const row = (
@@ -438,13 +453,23 @@ function ItemRow({
       {votes && <span className="plan-votes">{votes}</span>}
     </button>
   );
-  if (!low || !onQuickRemove) return row;
+  const remove = low && onQuickRemove;
+  if (!remove && !onZukan) return row;
   return (
     <div className="plan-item-wrap">
       {row}
-      <button className="quick-remove" onClick={onQuickRemove} aria-label={`${ride.nameJa}を作戦から外す`}>
-        外す
-      </button>
+      <div className="plan-item-side">
+        {onZukan && (
+          <button className="zukan-link" onClick={onZukan} aria-label={`${ride.nameJa}を図鑑で見る`}>
+            📖<small>図鑑</small>
+          </button>
+        )}
+        {remove && (
+          <button className="quick-remove" onClick={onQuickRemove} aria-label={`${ride.nameJa}を作戦から外す`}>
+            外す
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -616,13 +641,25 @@ type NeedFilter = "ALL" | Necessity | "optional";
 
 const NEED_FILTERS: readonly { id: NeedFilter; label: string }[] = [
   { id: "ALL", label: "すべて" },
-  { id: "both", label: "2人とも絶対" },
-  { id: "one", label: "どちらかが絶対" },
-  { id: "none", label: "絶対なし" },
+  { id: "both", label: "必須" },
+  { id: "one", label: "ほぼ必須" },
+  { id: "none", label: "できれば" },
   { id: "optional", label: "任意（保険）" },
 ];
 
-function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks: Checks; onCheck: (id: string, done: boolean) => void; votes: AllVotes }) {
+function ReservationPanel({
+  plan,
+  checks,
+  onCheck,
+  votes,
+  onZukan,
+}: {
+  plan: Plan;
+  checks: Checks;
+  onCheck: (id: string, done: boolean) => void;
+  votes: AllVotes;
+  onZukan: (rideId: string, anchor: string) => void;
+}) {
   const [need, setNeed] = useState<NeedFilter>("ALL");
   const steps = bookingSteps(plan, rideById).map((st) => ({ ...st, tasks: st.tasks.map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) })) }));
   const all = steps.flatMap((st) => st.tasks).filter((t) => t.kind !== "prep");
@@ -652,6 +689,7 @@ function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks
           </button>
         ))}
       </div>
+      <p className="note need-legend">必須＝2人とも「絶対」／ほぼ必須＝1人が「絶対」／できれば＝「絶対」と答えた人はいない（乗りたい・どちらでも）／任意＝朝イチで乗る予定の保険</p>
       {steps.map((st, i) => {
         const shown = st.tasks.filter(match);
         if (need !== "ALL" && shown.length === 0) return null;
@@ -679,7 +717,7 @@ function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks
                   const done = checks[t.id];
                   no += 1;
                   return (
-                    <li key={t.id} className={done ? "is-done" : undefined}>
+                    <li key={t.id} id={`rsv-${t.id}`} className={done ? "is-done" : undefined}>
                       <label>
                         <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
                         <span>
@@ -689,6 +727,8 @@ function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks
                           {t.kind === "dining" && isHardToBook(t.rideIds[0] ?? "") && <small className="hard">🔥 取りにくい店。いちばん先に</small>}
                           {t.kind !== "singleOptional" && t.kind !== "prep" && <small className={`need need-${t.need}`}>{NECESSITY_LABEL[t.need]}</small>}
                           <small>{t.detail}</small>
+                          {t.opens && <small className="rsv-at">📆 予約する日時: {t.opens}</small>}
+                          {t.pick && <small className="rsv-at">🕐 選ぶ時間枠: {t.pick}</small>}
                           {done && (
                             <small className="rsv-by">
                               ✓ {done.by === "toshi" ? "Toshi" : "妻"}が対応済み（{new Date(done.at).toLocaleDateString("ja-JP")}）
@@ -696,6 +736,15 @@ function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks
                           )}
                         </span>
                       </label>
+                      {t.rideIds.length > 0 && (
+                        <div className="rsv-links">
+                          {t.rideIds.map((id) => (
+                            <button key={id} className="link" onClick={() => onZukan(id, `rsv-${t.id}`)}>
+                              📖 {rideById(id)?.nameJa ?? id}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -761,21 +810,88 @@ function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]
 
 const STEP_NO = ["①", "②", "③", "④", "⑤", "⑥"];
 
-/** 本命パーク（いちばん空いている日に置き、予備日も優先する） */
-function FocusPicker({ value, onChange }: { value: ParkId | ""; onChange: (p: ParkId | "") => void }) {
+function CrowdBadge({ park, date }: { park: ParkId; date: string }) {
+  const c = crowdInfo(park, date);
   return (
-    <label className="focus-picker">
-      ⭐ 本命パーク（いちばん空いている日に置く）
-      <select value={value} onChange={(e) => onChange(e.target.value as ParkId | "")}>
-        <option value="">決めない</option>
-        {PARKS.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nameJa}
-          </option>
+    <p className={`crowd-badge crowd-${c.level}`}>
+      {CROWD_ICON[c.level]} 混雑予想: <strong>{CROWD_LABEL[c.level]}</strong>
+      <small>（{c.reasons.join("・")}）</small>
+    </p>
+  );
+}
+
+const RANK_JA = ["第1優先", "第2優先", "第3優先", "第4優先"];
+
+/** 本命パークの優先順位（第1〜第4）。上の優先ほど混雑予想の低い日に置き、予備日も優先する */
+function FocusPicker({ value, onChange, plan }: { value: readonly ParkId[]; onChange: (p: ParkId[]) => void; plan: Plan | null }) {
+  const set = (rank: number, park: ParkId | ""): void => {
+    const slots: (ParkId | "")[] = [0, 1, 2, 3].map((i) => value[i] ?? "");
+    const prev = slots[rank] ?? "";
+    // 同じパークが別の順位にあれば入れ替える
+    const other = park ? slots.indexOf(park) : -1;
+    if (other >= 0) slots[other] = prev;
+    slots[rank] = park;
+    onChange(slots.filter((p): p is ParkId => p !== ""));
+  };
+  const days = TRIP.parkDays;
+  return (
+    <div className="focus-picker">
+      <p className="note">行きたい順に選んでください。第1優先ほど空いている日に置きます（予備日も第1優先のパークを優先）。</p>
+      <div className="focus-ranks">
+        {[0, 1, 2, 3].map((i) => (
+          <label key={i}>
+            <span>{RANK_JA[i]}</span>
+            <select value={value[i] ?? ""} onChange={(e) => set(i, e.target.value as ParkId | "")} disabled={i > value.length}>
+              <option value="">決めない</option>
+              {PARKS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nameJa}
+                </option>
+              ))}
+            </select>
+          </label>
         ))}
-      </select>
-      <small className="note">混み具合は曜日の一般的な傾向（土＞日＞月＞火・水）で判断しています。</small>
-    </label>
+      </div>
+      <table className="crowd-table">
+        <caption>混雑予想（{CROWD_ICON.low}空き気味 {CROWD_ICON.mid}ふつう {CROWD_ICON.high}混む {CROWD_ICON.peak}とても混む）</caption>
+        <thead>
+          <tr>
+            <th></th>
+            {PARKS.map((p) => (
+              <th key={p.id}>{PARK_SHORT[p.id]}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {days.map((date) => {
+            const day = plan?.days.find((d) => d.date === date);
+            return (
+              <tr key={date}>
+                <th>{dayLabel(date)}</th>
+                {PARKS.map((p) => {
+                  const c = crowdInfo(p.id, date);
+                  const mine = day?.morningPark === p.id;
+                  return (
+                    <td key={p.id} className={mine ? "mine" : undefined} title={c.reasons.join("・")}>
+                      {CROWD_ICON[c.level]}
+                      <small>{CROWD_LABEL[c.level]}</small>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {plan && <p className="note">枠で囲んだところが、今の作戦で行くパークです。</p>}
+      <p className="note">
+        混雑予想は一般的な傾向から作った目安です（土曜がいちばん混み水曜がいちばん空く、エプコットはフラワー＆ガーデンの週末が混む、5/4はスタジオがスター・ウォーズの日で混む。参考:{" "}
+        <a href={CROWD_SOURCE.url} target="_blank" rel="noreferrer">
+          {CROWD_SOURCE.label}
+        </a>
+        ）。出発1ヶ月前に確かめ直します。
+      </p>
+    </div>
   );
 }
 

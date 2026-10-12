@@ -39,7 +39,7 @@ describe("予約が必要なもの", () => {
   it("予約開始日時: レストラン 3/1 20:00、時短パス 4/23 20:00（日本時間）", () => {
     expect(tasks[0]?.opens).toContain("2027年3月1日(月) 20:00");
     expect(tasks[1]?.opens).toContain("2027年4月23日(金) 20:00");
-    expect(tasks[1]?.detail).toContain("★スリンキー");
+    expect(tasks[1]?.pick).toContain("★スリンキー");
   });
 });
 

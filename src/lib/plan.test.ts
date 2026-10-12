@@ -43,9 +43,12 @@ describe("作戦の自動作成", () => {
     expect(plan.days.find((d) => d.date === "2027-05-04")?.morningPark).not.toBe("HS");
   });
 
-  it("重いパークほど週末を避ける（全部同じ重さなら、週末はAKとEPに）", () => {
+  it("混むパークほど週末を避ける（全部同じ重さなら、土曜はAK。エプコットはフラワー＆ガーデンの週末を避け、スタジオは5/4を避ける）", () => {
     const order = chooseParkOrder([], TRIP.parkDays);
-    expect(order.slice(0, 2).sort()).toEqual(["AK", "EP"]);
+    expect(order[0]).toBe("AK");
+    expect(order.slice(0, 2)).not.toContain("EP");
+    expect(order.slice(0, 2)).not.toContain("MK");
+    expect(order[3]).not.toBe("HS");
   });
 
   it("アニマルキングダムの日は夕方エプコットへ", () => {
@@ -145,15 +148,31 @@ describe("作戦の保存データ", () => {
 
 describe("本命パーク", () => {
   it("本命をアニマルキングダムにすると、4日のうちいちばん空いている平日（5/4 火）に置く", () => {
-    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusPark: "AK" });
+    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusParks: ["AK"] });
     expect(p.days.find((d) => d.morningPark === "AK" && d.date !== "2027-05-05")?.date).toBe("2027-05-04");
     expect(p.days.find((d) => d.date === "2027-05-04")?.morningPark).not.toBe("HS");
-    expect(p.focusPark).toBe("AK");
+    expect(p.focusParks).toEqual(["AK"]);
     expect(itemOfIn(p, "flight-of-passage")?.method).toBe("early");
   });
   it("予備日は、残りが同じなら本命パークになる", () => {
-    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusPark: "AK" });
+    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusParks: ["AK"] });
     expect(p.days[4]?.morningPark).toBe("AK");
+  });
+  it("第1〜第4優先: 上の優先ほど混雑予想の低い日になる", async () => {
+    const { crowdScore } = await import("./crowd");
+    const order = ["MK", "HS", "EP", "AK"] as const;
+    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusParks: [...order] });
+    const scoreOf = (park: (typeof order)[number]) => {
+      const d = p.days.slice(0, 4).find((x) => x.morningPark === park)!;
+      return crowdScore(park, d.date);
+    };
+    expect(scoreOf("MK")).toBeLessThanOrEqual(scoreOf("HS"));
+    expect(p.focusParks).toEqual([...order]);
+  });
+  it("以前の保存形式（本命1つ）も読める", async () => {
+    const { parsePlan } = await import("./plan");
+    expect(parsePlan({ days: [], focusPark: "EP" }).focusParks).toEqual(["EP"]);
+    expect(parsePlan({ days: [], focusParks: ["HS", "HS", "XX", "MK"] }).focusParks).toEqual(["HS", "MK"]);
   });
 });
 

@@ -2,6 +2,7 @@ import { TRIP } from "../data/trip";
 import type { Ride } from "../types";
 import { bookingOpensAt, bookingOpensJst, jstText, lightningLaneOpensAt, lightningLaneOpensJst } from "./dining";
 import type { Plan } from "./plan";
+import { timeHints } from "./bookTimes";
 
 /** 事前に予約・購入が必要なもの（作戦から自動で作る） */
 export interface ReservationTask {
@@ -14,15 +15,20 @@ export interface ReservationTask {
   kind: "prep" | "dining" | "multi" | "single" | "singleOptional";
   /** 関係するアトラクション（2人の回答で「必須かどうか」を判断する） */
   rideIds: string[];
+  /** 予約するときに選ぶ時間枠のおすすめ（例: 「5/4(火) 11:30頃」） */
+  pick?: string;
 }
 
-const md = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+const WD = ["日", "月", "火", "水", "木", "金", "土"];
+const md = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}(${WD[new Date(`${iso}T12:00:00Z`).getUTCDay()]})`;
 const MEAL: Record<string, string> = { am: "朝食", early: "朝食", lunch: "昼食", pm: "昼食", dinner: "夕食", night: "夕食" };
 
 export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | undefined): ReservationTask[] {
   const out: ReservationTask[] = [];
   const llOpens = `${lightningLaneOpensJst(TRIP.checkIn)}（日本時間）`;
   for (const d of plan.days) {
+    const hints = timeHints(d, rideById);
+    const hint = (id: string): string => hints.get(id)?.text ?? "";
     const multi = d.items.filter((i) => i.method === "multi").flatMap((i) => rideById(i.rideId) ?? []);
     if (multi.length > 0 || d.items.some((i) => i.method === "multiExtra")) {
       out.push({
@@ -30,7 +36,15 @@ export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | un
         kind: "multi",
         title: `${md(d.date)} Multi Pass を買って事前予約`,
         rideIds: multi.map((r) => r.id),
-        detail: multi.length > 0 ? `事前予約: ${multi.map((r) => `${r.multiPassTier === 1 && r.park !== "AK" ? "★" : ""}${r.nameJa}`).join("、")}` : "事前予約なし（当日の追加予約用）",
+        detail: multi.length > 0 ? "事前に3本まで予約。★（人気グループ）から選ぶ" : "事前予約なし（当日の追加予約用）",
+        ...(multi.length > 0
+          ? {
+              pick: [...multi]
+                .sort((a, b) => (hints.get(a.id)?.at ?? 0) - (hints.get(b.id)?.at ?? 0))
+                .map((r) => `${r.multiPassTier === 1 && r.park !== "AK" ? "★" : ""}${r.nameJa} ${hint(r.id)}`)
+                .join(" ／ "),
+            }
+          : {}),
         opens: llOpens,
       });
     }
@@ -38,7 +52,7 @@ export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | un
       const r = rideById(it.rideId);
       if (!r) continue;
       if (it.method === "single") {
-        out.push({ id: `sp:${d.date}:${r.id}`, kind: "single", rideIds: [r.id], title: `${md(d.date)} Single Pass を買う: ${r.nameJa}`, detail: "1本ずつ有料。売り切れることがあるので予約開始と同時に", opens: llOpens });
+        out.push({ id: `sp:${d.date}:${r.id}`, kind: "single", rideIds: [r.id], title: `${md(d.date)} Single Pass を買う: ${r.nameJa}`, detail: "1本ずつ有料。売り切れることがあるので予約開始と同時に", opens: llOpens, pick: `${md(d.date)} ${hint(r.id)}` });
       }
       if (it.method === "early" && r.lightningLane === "single") {
         out.push({
@@ -48,6 +62,7 @@ export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | un
           title: `（任意）${md(d.date)} 保険の Single Pass: ${r.nameJa}`,
           detail: "朝イチ（開園前入園）で乗る予定なので必須ではない。故障で朝イチに乗れなかったときの保険に、確実にしたいなら買っておく（有料）",
           opens: llOpens,
+          pick: `${md(d.date)} いちばん早い枠（朝イチに乗れなかったときに使う）`,
         });
       }
       if (it.method === "meal" && r.dining && r.dining.booking !== "none") {
@@ -58,6 +73,7 @@ export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | un
           title: `${md(d.date)} ${MEAL[it.slot] ?? "食事"}の予約: ${r.nameJa}`,
           detail: r.dining.booking === "hotel" ? "ホテル側で予約（方法は公式ページで確認）" : "公式アプリ「My Disney Experience」で予約。2人分",
           opens: r.dining.booking === "hotel" ? "ホテルの予約受付しだい" : `${bookingOpensJst(TRIP.checkIn)}（日本時間）`,
+          pick: `${md(d.date)} ${hint(r.id)}（${MEAL[it.slot] ?? "食事"}）`,
         });
       }
     }

@@ -2462,3 +2462,146 @@ ol.rsv-list {
     color: #ffb3c2;
   }
 }
+
+/* 図鑑 → 作戦に戻る（左下に浮かぶ） */
+.back-button {
+  position: fixed;
+  left: 14px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  z-index: 6;
+  min-height: 48px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 20px rgba(42, 27, 92, 0.35);
+}
+.flash {
+  animation: flash 2s ease-out;
+  border-radius: 12px;
+}
+@keyframes flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 4px var(--gold);
+  }
+  100% {
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+/* 作戦: 項目の横の「📖 図鑑」 */
+.plan-item-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-item-side > button {
+  flex: 1;
+}
+.zukan-link {
+  min-width: 48px;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.1;
+}
+.zukan-link small {
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.rsv-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 2px 0 0 32px;
+  font-size: 0.8rem;
+}
+.rsv-list small.rsv-at {
+  color: var(--text);
+  font-weight: 700;
+}
+.need-legend {
+  font-size: 0.74rem;
+}
+
+/* 作戦: 本命パークの優先順位と混雑予想 */
+.focus-panel summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.focus-picker {
+  margin-top: 8px;
+}
+.focus-ranks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.focus-ranks label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+.focus-ranks select {
+  min-width: 0;
+}
+.crowd-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 4px;
+  font-size: 0.82rem;
+  font-weight: 400;
+  table-layout: fixed;
+}
+.crowd-table caption {
+  text-align: left;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding-bottom: 4px;
+}
+.crowd-table th,
+.crowd-table td {
+  padding: 4px 2px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.crowd-table tbody th {
+  text-align: left;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.crowd-table td small {
+  display: block;
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+.crowd-table td.mine {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+.crowd-badge {
+  margin: 2px 0 6px;
+  font-size: 0.82rem;
+}
+.crowd-badge small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}

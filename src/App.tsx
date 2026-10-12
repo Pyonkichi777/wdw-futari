@@ -157,7 +157,37 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
     if (next === tab) scrollToTop();
     setTab(next);
     setFocus(null);
+    setBack(null);
   };
+
+  // 作戦 → 図鑑 へ飛んだときの「戻る」先（作戦のどの項目から来たか）
+  const [back, setBack] = useState<{ tab: Tab; anchor: string } | null>(null);
+  const [restore, setRestore] = useState<string | null>(null);
+  const goZukanFrom = (from: Tab, rideId: string, anchor: string): void => {
+    setBack({ tab: from, anchor });
+    jumpTo("zukan", rideId);
+  };
+  const goBack = (): void => {
+    if (!back) return;
+    setTab(back.tab);
+    setFocus(null);
+    setRestore(back.anchor);
+    setBack(null);
+  };
+  useEffect(() => {
+    if (!restore) return;
+    const id = window.requestAnimationFrame(() => {
+      const el = document.getElementById(restore);
+      setRestore(null);
+      if (!el) return;
+      // 折りたたみの中なら開いてから
+      for (let d = el.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
+      el.scrollIntoView({ behavior: "instant", block: "center" });
+      el.classList.add("flash");
+      window.setTimeout(() => el.classList.remove("flash"), 2000);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [restore, tab]);
 
   return (
     <div className="app">
@@ -185,6 +215,11 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       )}
       <main className="content">
         {tab === "zukan" && <Encyclopedia myVotes={votes[me]} focus={focus} onGoVote={(id) => jumpTo("vote", id)} />}
+        {tab === "zukan" && back && (
+          <button className="back-button" onClick={goBack}>
+            ← 作戦に戻る
+          </button>
+        )}
         {tab === "vote" && (
           <VoteScreen
             me={me}
@@ -208,6 +243,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             votes={votes}
             checks={checks}
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
+            onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
           />
         )}
         {tab === "news" && <NewsScreen />}
