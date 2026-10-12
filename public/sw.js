@@ -2,11 +2,14 @@
 // データ（投票など）はFirestoreが端末内に別途保存・同期する。
 const CACHE = "wdw-futari-v3";
 const FONT_ORIGINS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
+// 地図の画像（OpenStreetMap）は、一度見たものを端末に保存する（パーク内で電波が弱くても地図が出るように）
+const TILE_CACHE = "wdw-futari-tiles-v1";
+const TILE_ORIGIN = "https://tile.openstreetmap.org";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== TILE_CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
   );
 });
 
@@ -25,6 +28,21 @@ self.addEventListener("fetch", (e) => {
             caches.open(CACHE).then((c) => c.put(req, copy));
             return res;
           }),
+      ),
+    );
+    return;
+  }
+  if (url.origin === TILE_ORIGIN) {
+    e.respondWith(
+      caches.open(TILE_CACHE).then((c) =>
+        c.match(req).then(
+          (hit) =>
+            hit ??
+            fetch(req).then((res) => {
+              if (res.ok) c.put(req, res.clone());
+              return res;
+            }),
+        ),
       ),
     );
     return;

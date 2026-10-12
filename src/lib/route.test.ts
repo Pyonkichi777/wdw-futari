@@ -33,7 +33,7 @@ describe("予約が必要なもの", () => {
   };
   const tasks = reservationTasks(plan, rideById);
   it("レストラン → Multi Pass → Single Pass の順。予約のいらない店は入らない", () => {
-    expect(tasks.map((t) => t.kind)).toEqual(["dining", "multi", "single"]);
+    expect(tasks.map((t) => t.kind)).toEqual(["dining", "multi", "single", "singleOptional"]);
     expect(tasks.some((t) => t.title.includes("エブリシング・ポップ"))).toBe(false);
   });
   it("予約開始日時: レストラン 3/1 20:00、時短パス 4/23 20:00（日本時間）", () => {
@@ -68,5 +68,22 @@ describe("1日を近い順に組み直す", () => {
     expect(routed.items[0]?.rideId).toBe("space-mountain");
     // トゥモローランドのものは午前に寄る
     expect(routed.items.find((i) => i.rideId === "buzz-lightyear")?.slot).toBe("am");
+  });
+});
+
+describe("必須度と保険の Single Pass", () => {
+  it("2人の回答から必須度を出す（複数ならいちばん強いもの）", async () => {
+    const { necessityOf } = await import("./necessity");
+    const votes = { toshi: { a: "must", b: "want" }, tsuma: { a: "must", b: "must" } } as const;
+    expect(necessityOf(["a"], votes)).toBe("both");
+    expect(necessityOf(["b"], votes)).toBe("one");
+    expect(necessityOf(["c"], votes)).toBe("none");
+    expect(necessityOf(["b", "a"], votes)).toBe("both");
+  });
+  it("朝イチの Single Pass 対象（アバター等）は、任意の保険として一覧に出る", () => {
+    const plan: Plan = { updatedBy: null, updatedAt: null, days: [{ date: "2027-05-04", morningPark: "AK", eveningPark: "AK", items: [it_("flight-of-passage", "early", "early")] }] };
+    const t = reservationTasks(plan, rideById);
+    expect(t.map((x) => x.kind)).toEqual(["singleOptional"]);
+    expect(t[0]?.title).toContain("任意");
   });
 });

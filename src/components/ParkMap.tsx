@@ -1,16 +1,15 @@
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { COORDS } from "../data/coords";
 import { parkName } from "../data/parks";
-import { RIDES, rideById } from "../data/rides";
+import { rideById } from "../data/rides";
 import type { PlanItem } from "../lib/plan";
 import type { ParkId, Rank } from "../types";
 
-const W = 340;
-const H = 260;
-const PAD = 22;
+const RANK_COLOR: Record<Rank, string> = { S: "#ff4f6d", A: "#1d7fc4", B: "#8e7fb8" };
 
-const RANK_COLOR: Record<Rank, string> = { S: "#ff4f6d", A: "#1d7fc4", B: "#9a8fb8" };
-
-/** パークの中にある点だけ（ホテルのレストランは地図に入れない） */
+/** パークの中にある点だけ（ホテルのレストランは入れない） */
 const inParkPoint = (id: string, park: ParkId): readonly [number, number] | null => {
   const r = rideById(id);
   if (!r || r.park !== park || (r.dining && !r.dining.inPark)) return null;
@@ -18,65 +17,58 @@ const inParkPoint = (id: string, park: ParkId): readonly [number, number] | null
 };
 
 /**
- * パーク内の地図（簡略図）と、その日に回る順番の線。公式の地図画像は使わず、
- * 公式サイトのピンの緯度・経度から位置関係だけを描く。灰色の点はそのパークのほかの乗り物。
+ * 実際の地図（OpenStreetMap）の上に、その日に回る順番を番号つきのピンと線で描く。
+ * 位置は公式サイトのピンの緯度・経度。地図を指で動かしたり拡大したりできる。
  */
 export function ParkMap({ park, items, rankOf }: { park: ParkId; items: readonly PlanItem[]; rankOf: (id: string) => Rank | undefined }) {
-  const background = RIDES.flatMap((r) => {
-    const p = inParkPoint(r.id, park);
-    return p && r.kind !== "dining" ? [{ id: r.id, p }] : [];
-  });
+  const el = useRef<HTMLDivElement>(null);
   const route = items.flatMap((it) => {
     const p = inParkPoint(it.rideId, park);
     return p ? [{ it, p }] : [];
   });
-  const all = [...background.map((b) => b.p), ...route.map((r) => r.p)];
-  if (all.length === 0) return null;
+  const key = route.map((r) => r.it.rideId).join(",");
 
-  // 緯度・経度を画面の座標に（経度は緯度に合わせて縮める）
-  const lat0 = all.reduce((s, p) => s + p[0], 0) / all.length;
-  const k = Math.cos((lat0 * Math.PI) / 180);
-  const xs = all.map((p) => p[1] * k);
-  const ys = all.map((p) => p[0]);
-  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const scale = Math.min((W - PAD * 2) / Math.max(maxX - minX, 1e-6), (H - PAD * 2) / Math.max(maxY - minY, 1e-6));
-  const offX = (W - (maxX - minX) * scale) / 2;
-  const offY = (H - (maxY - minY) * scale) / 2;
-  const toXY = (p: readonly [number, number]): [number, number] => [offX + (p[1] * k - minX) * scale, H - (offY + (p[0] - minY) * scale)];
+  useEffect(() => {
+    if (!el.current || route.length === 0) return;
+    const map = L.map(el.current, { scrollWheelZoom: false, attributionControl: true });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+    }).addTo(map);
+    const latlngs = route.map((r) => L.latLng(r.p[0], r.p[1]));
+    L.polyline(latlngs, { color: "#3b2479", weight: 4, opacity: 0.85, dashArray: "8 7" }).addTo(map);
+    route.forEach((r, i) => {
+      const rank = rankOf(r.it.rideId);
+      const icon = L.divIcon({
+        className: "pm-pin",
+        html: `<span style="background:${rank ? RANK_COLOR[rank] : "#c9a227"}">${i + 1}</span>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+      L.marker(latlngs[i]!, { icon, title: rideById(r.it.rideId)?.nameJa ?? "" })
+        .bindPopup(`${i + 1}. ${rideById(r.it.rideId)?.nameJa ?? ""}`)
+        .addTo(map);
+    });
+    if (latlngs.length === 1) map.setView(latlngs[0]!, 17);
+    else map.fitBounds(L.latLngBounds(latlngs), { padding: [28, 28], maxZoom: 18 });
+    return () => {
+      map.remove();
+    };
+    // ルート（順番）が変わったときだけ描き直す
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, park]);
 
-  const pts = route.map((r) => toXY(r.p));
+  if (route.length === 0) return <p className="note">このパークで地図に出せる予定はありません（ホテルのレストランなど）。</p>;
   return (
     <figure className="park-map">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${parkName(park)}の回る順番の地図`}>
-        <rect x="1" y="1" width={W - 2} height={H - 2} rx="18" className="pm-bg" />
-        {background.map((b) => {
-          const [x, y] = toXY(b.p);
-          return <circle key={b.id} cx={x} cy={y} r="3" className="pm-dot" />;
-        })}
-        {pts.length > 1 && <polyline points={pts.map((p) => p.join(",")).join(" ")} className="pm-route" />}
-        {route.map((r, i) => {
-          const [x, y] = toXY(r.p);
-          const rank = rankOf(r.it.rideId);
-          return (
-            <g key={r.it.rideId}>
-              <circle cx={x} cy={y} r="11" fill={rank ? RANK_COLOR[rank] : "#c9a227"} className="pm-stop" />
-              <text x={x} y={y + 4} textAnchor="middle" className="pm-num">
-                {i + 1}
-              </text>
-            </g>
-          );
-        })}
-        <text x={W - 14} y={22} textAnchor="end" className="pm-north">
-          ↑北
-        </text>
-      </svg>
+      <div ref={el} className="pm-leaflet" role="img" aria-label={`${parkName(park)}の地図と回る順番`} />
       <figcaption>
         <ol className="pm-legend">
           {route.map((r) => (
             <li key={r.it.rideId}>{rideById(r.it.rideId)?.nameJa}</li>
           ))}
         </ol>
-        <p className="note">位置は公式サイトの地図のピンをもとにした簡略図です（道は描いていません）。灰色の点はほかの乗り物。</p>
+        <p className="note">地図は OpenStreetMap、ピンの位置は公式サイトの地図のピン。2本指で拡大・移動できます。電波がないと地図は表示されません。</p>
       </figcaption>
     </figure>
   );

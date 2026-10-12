@@ -2086,7 +2086,7 @@ button.glass {
 .park-map {
   margin: 8px 0;
 }
-.park-map svg {
+.park-map > svg {
   width: 100%;
   height: auto;
   display: block;
@@ -2194,4 +2194,49 @@ button.glass {
 .rsv-by {
   color: #1d7a45 !important;
   font-weight: 700;
+}
+.pm-leaflet {
+  width: 100%;
+  height: 320px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  z-index: 0;
+}
+.pm-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.leaflet-container {
+  font-family: inherit;
+}
+.need {
+  font-weight: 800;
+}
+.need-both { color: #d23b55 !important; }
+.need-one { color: #1d7fc4 !important; }
+.focus-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+.focus-picker select {
+  font-size: 1rem;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: inherit;
 }

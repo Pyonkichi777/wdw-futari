@@ -142,3 +142,21 @@ describe("作戦の保存データ", () => {
     expect(p.days).toEqual([{ date: "2027-05-02", morningPark: "EP", eveningPark: "EP", items: [{ rideId: "remy", slot: "am", method: "multi" }] }]);
   });
 });
+
+describe("本命パーク", () => {
+  it("本命をアニマルキングダムにすると、4日のうちいちばん空いている平日（5/4 火）に置く", () => {
+    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusPark: "AK" });
+    expect(p.days.find((d) => d.morningPark === "AK" && d.date !== "2027-05-05")?.date).toBe("2027-05-04");
+    expect(p.days.find((d) => d.date === "2027-05-04")?.morningPark).not.toBe("HS");
+    expect(p.focusPark).toBe("AK");
+    expect(itemOfIn(p, "flight-of-passage")?.method).toBe("early");
+  });
+  it("予備日は、残りが同じなら本命パークになる", () => {
+    const p = buildPlan(consensus, rideById, TRIP.parkDays, { focusPark: "AK" });
+    expect(p.days[4]?.morningPark).toBe("AK");
+  });
+});
+
+function itemOfIn(p: ReturnType<typeof buildPlan>, id: string) {
+  return p.days.flatMap((d) => d.items).find((i) => i.rideId === id);
+}

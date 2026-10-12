@@ -29,6 +29,7 @@ import { reservationTasks } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
+import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
 import type { Consensus, ParkId, PersonId, Rank, Ride } from "../types";
 
 interface Props {
@@ -77,8 +78,9 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
     );
   }
 
+  const [focus, setFocus] = useState<ParkId | "">(plan.focusPark ?? "AK");
   const generate = (): void => {
-    const p = buildPlan(consensus.items, rideById, TRIP.parkDays);
+    const p = buildPlan(consensus.items, rideById, TRIP.parkDays, focus ? { focusPark: focus } : {});
     save({ ...p, days: p.days.map(routeDay) });
   };
   const voteText = (r: Ride): string | null => {
@@ -94,6 +96,7 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
         <h2>5日間の作戦</h2>
         <div className="empty-state">
           <p>確定した合意リストから、おすすめの5日間の作戦を自動で組みます。そのあと2人で手直しできます。</p>
+          <FocusPicker value={focus} onChange={setFocus} />
           <button className="primary wide" onClick={generate}>
             合意リストからおすすめの作戦を作る
           </button>
@@ -117,7 +120,7 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
 
       <WhereNow plan={plan} onHere={setHere} />
 
-      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} />
+      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} />
 
       <div className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
@@ -185,14 +188,17 @@ export function PlanScreen({ me, consensus, plan, onSave, votes, checks, onCheck
       <LightningLaneSheet plan={plan} />
       <LightningLaneGuide />
 
-      <button
-        className="link"
-        onClick={() => {
-          if (window.confirm("今の作戦を消して、合意リストからおすすめの作戦を作り直します。手で直したところは元に戻ります。よろしいですか？")) generate();
-        }}
-      >
-        おすすめの作戦に作り直す
-      </button>
+      <div className="plan-day">
+        <FocusPicker value={focus} onChange={setFocus} />
+        <button
+          className="link"
+          onClick={() => {
+            if (window.confirm("今の作戦を消して、合意リストからおすすめの作戦を作り直します。手で直したところは元に戻ります（予約のチェックは残ります）。よろしいですか？")) generate();
+          }}
+        >
+          この本命パークで、おすすめの作戦に作り直す
+        </button>
+      </div>
     </section>
   );
 }
@@ -516,17 +522,38 @@ function DayMap({ day, rankOf, onRoute }: { day: DayPlan; rankOf: (id: string) =
 }
 
 /** 事前の予約・購入が必要なもの（作戦から自動で作る）。済んだらチェック（2人で共有） */
-function ReservationPanel({ plan, checks, onCheck }: { plan: Plan; checks: Checks; onCheck: (id: string, done: boolean) => void }) {
-  const tasks = reservationTasks(plan, rideById);
-  if (tasks.length === 0) return null;
-  const left = tasks.filter((t) => checks[t.id] === undefined).length;
+type NeedFilter = "ALL" | Necessity | "optional";
+
+const NEED_FILTERS: readonly { id: NeedFilter; label: string }[] = [
+  { id: "ALL", label: "すべて" },
+  { id: "both", label: "2人とも絶対" },
+  { id: "one", label: "どちらかが絶対" },
+  { id: "none", label: "絶対なし" },
+  { id: "optional", label: "任意（保険）" },
+];
+
+function ReservationPanel({ plan, checks, onCheck, votes }: { plan: Plan; checks: Checks; onCheck: (id: string, done: boolean) => void; votes: AllVotes }) {
+  const [need, setNeed] = useState<NeedFilter>("ALL");
+  const all = reservationTasks(plan, rideById).map((t) => ({ ...t, need: necessityOf(t.rideIds, votes) }));
+  if (all.length === 0) return null;
+  const tasks = all.filter((t) => (need === "ALL" ? true : need === "optional" ? t.kind === "singleOptional" : t.kind !== "singleOptional" && t.need === need));
+  const left = all.filter((t) => checks[t.id] === undefined && t.kind !== "singleOptional").length;
   return (
     <details className="plan-day rsv-panel" open={left > 0}>
       <summary>
         <strong>📅 事前の予約・購入が必要なもの</strong>
         <span className={left > 0 ? "rsv todo" : "rsv done"}>{left > 0 ? `残り${left}件` : "すべて済み"}</span>
       </summary>
+      <div className="chips wrap" role="group" aria-label="必須度で絞り込む">
+        {NEED_FILTERS.map((f) => (
+          <button key={f.id} aria-pressed={need === f.id} className={need === f.id ? "chip on" : "chip"} onClick={() => setNeed(f.id)}>
+            {f.label}
+            <span className="vs-num">{f.id === "ALL" ? all.length : f.id === "optional" ? all.filter((t) => t.kind === "singleOptional").length : all.filter((t) => t.kind !== "singleOptional" && t.need === f.id).length}</span>
+          </button>
+        ))}
+      </div>
       <ul className="rsv-list">
+        {tasks.length === 0 && <li className="empty">この条件に当てはまるものはありません。</li>}
         {tasks.map((t) => {
           const done = checks[t.id];
           return (
@@ -535,6 +562,7 @@ function ReservationPanel({ plan, checks, onCheck }: { plan: Plan; checks: Check
                 <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
                 <span>
                   <strong>{t.title}</strong>
+                  {t.kind !== "singleOptional" && <small className={`need need-${t.need}`}>{NECESSITY_LABEL[t.need]}</small>}
                   <small>{t.detail}</small>
                   <small>予約開始: {t.opens}</small>
                   {done && (
@@ -550,5 +578,23 @@ function ReservationPanel({ plan, checks, onCheck }: { plan: Plan; checks: Check
       </ul>
       <p className="note">作戦を変えると、この一覧も自動で変わります（チェックは残ります）。</p>
     </details>
+  );
+}
+
+/** 本命パーク（いちばん空いている日に置き、予備日も優先する） */
+function FocusPicker({ value, onChange }: { value: ParkId | ""; onChange: (p: ParkId | "") => void }) {
+  return (
+    <label className="focus-picker">
+      ⭐ 本命パーク（いちばん空いている日に置く）
+      <select value={value} onChange={(e) => onChange(e.target.value as ParkId | "")}>
+        <option value="">決めない</option>
+        {PARKS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nameJa}
+          </option>
+        ))}
+      </select>
+      <small className="note">混み具合は曜日の一般的な傾向（土＞日＞月＞火・水）で判断しています。</small>
+    </label>
   );
 }

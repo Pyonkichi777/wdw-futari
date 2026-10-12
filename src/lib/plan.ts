@@ -25,6 +25,8 @@ export interface DayPlan {
 
 export interface Plan {
   days: DayPlan[];
+  /** 本命パーク（いちばん空いている日に置く） */
+  focusPark?: ParkId;
   updatedBy: PersonId | null;
   updatedAt: number | null;
 }
@@ -55,8 +57,18 @@ export const emptyPlan = (): Plan => ({ days: [], updatedBy: null, updatedAt: nu
 
 const RANK_WEIGHT: Record<Rank, number> = { S: 5, A: 3, B: 1 };
 
-/** 週末・祝日に混みやすい度合い（人気パークほど大きい） */
-const WEEKEND_CROWD: Record<ParkId, number> = { MK: 3, HS: 3, EP: 2, AK: 1 };
+/** 混雑の影響の受けやすさ（人気パークほど大きい） */
+const PARK_POPULARITY: Record<ParkId, number> = { MK: 3, HS: 3, EP: 2, AK: 1.5 };
+
+/**
+ * 曜日ごとの混み具合の目安（一般的な傾向: 土 > 日 > 月 > 火・水）。2027年の混雑予想ではないので、
+ * 出発前に混雑予想カレンダーで確かめる
+ */
+export const DAY_CROWD: Record<number, number> = { 0: 4, 1: 3, 2: 2, 3: 2, 4: 2.5, 5: 3.5, 6: 5 };
+export const crowdOf = (iso: string): number => DAY_CROWD[new Date(`${iso}T12:00:00Z`).getUTCDay()] ?? 3;
+
+/** 本命パークは、混雑の重みを何倍にして空いている日へ寄せるか */
+const FOCUS_FACTOR = 4;
 
 const PARK_IDS: readonly ParkId[] = ["MK", "EP", "HS", "AK"];
 
@@ -89,7 +101,7 @@ function permutations<T>(xs: readonly T[]): T[][] {
  * パークを回る日を決める。4パークを1日ずつ（最終日は予備日）。
  * 重い（S・Aが多い）パークほど週末を避け、ハリウッド・スタジオはスター・ウォーズの日を避ける。
  */
-export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[]): ParkId[] {
+export function chooseParkOrder(entries: readonly Entry[], dates: readonly string[], focusPark?: ParkId): ParkId[] {
   const weight = (p: ParkId): number => entries.filter((e) => e.ride.park === p).reduce((s, e) => s + RANK_WEIGHT[e.rank], 0) + 1;
   const mainDates = dates.slice(0, PARK_IDS.length);
   let best: { order: ParkId[]; cost: number } | null = null;
@@ -99,7 +111,7 @@ export function chooseParkOrder(entries: readonly Entry[], dates: readonly strin
       const date = mainDates[i];
       if (!date) return;
       if (park === "HS" && date === STAR_WARS_DAY) cost += 1000;
-      if (isWeekend(date)) cost += WEEKEND_CROWD[park] * weight(park);
+      cost += crowdOf(date) * PARK_POPULARITY[park] * weight(park) * (park === focusPark ? FOCUS_FACTOR : 1);
     });
     if (!best || cost < best.cost) best = { order, cost };
   }
@@ -199,14 +211,19 @@ const sortItems = (items: PlanItem[]): PlanItem[] => [...items].sort((a, b) => S
  * - 乗り方: 朝イチ1本 → Single Pass（1日2本まで）→ Multi Pass 事前予約3本（人気グループは1本）→ 追加予約・1人乗り列・ふつうに並ぶ
  * - パレード: マジックキングダムの日に1つは入れる（合意リストになければ昼のパレードをおすすめで足す）
  */
-export function buildPlan(consensus: readonly ConsensusItem[], rideById: (id: string) => Ride | undefined, dates: readonly string[]): Plan {
+export function buildPlan(
+  consensus: readonly ConsensusItem[],
+  rideById: (id: string) => Ride | undefined,
+  dates: readonly string[],
+  opts: { focusPark?: ParkId } = {},
+): Plan {
   const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
     const ride = rideById(c.rideId);
     return ride ? [{ ride, rank: c.rank, ...(c.meal ? { meal: c.meal } : {}), order }] : [];
   });
   pool.sort((a, b) => RANK_WEIGHT[b.rank] - RANK_WEIGHT[a.rank] || a.order - b.order);
 
-  const order = chooseParkOrder(pool, dates);
+  const order = chooseParkOrder(pool, dates, opts.focusPark);
   const days: DayPlan[] = dates.slice(0, PARK_IDS.length).map((date, i) => {
     const park = order[i] ?? "MK";
     return { date, morningPark: park, eveningPark: park === "AK" ? "EP" : park, items: [] };
@@ -220,7 +237,9 @@ export function buildPlan(consensus: readonly ConsensusItem[], rideById: (id: st
     const left = (p: ParkId): number => pool.filter((e) => !placed.has(e.ride.id) && e.rank !== "B" && e.ride.park === p && e.ride.kind !== "dining").reduce((s, e) => s + RANK_WEIGHT[e.rank], 0);
     // 残りがなければ、Sがいちばん多いパーク（もう一度乗る・取りこぼし回収の日）
     const sCount = (p: ParkId): number => pool.filter((e) => e.rank === "S" && e.ride.park === p && e.ride.kind !== "dining").length;
-    const park = [...PARK_IDS].sort((a, b) => left(b) - left(a) || sCount(b) - sCount(a))[0] ?? "MK";
+    // 本命パークは、残りが同じなら優先（本命の取りこぼし回収・もう一度乗る）
+    const focusBonus = (p: ParkId): number => (p === opts.focusPark ? 1 : 0);
+    const park = [...PARK_IDS].sort((a, b) => left(b) - left(a) || focusBonus(b) - focusBonus(a) || sCount(b) - sCount(a))[0] ?? "MK";
     const reserve: DayPlan = { date: reserveDate, morningPark: park, eveningPark: park, items: [] };
     placeParkDay(reserve, pool, placed, { allowB: false });
     days.push(reserve);
@@ -233,7 +252,7 @@ export function buildPlan(consensus: readonly ConsensusItem[], rideById: (id: st
   const hasParade = days.some((d) => d.items.some((i) => rideById(i.rideId)?.kind === "parade"));
   if (mk && !hasParade && rideById("festival-of-fantasy")) mk.items.push({ rideId: "festival-of-fantasy", slot: "pm", method: "show", suggested: true });
 
-  return { days: days.map((d) => ({ ...d, items: sortItems(d.items) })), updatedBy: null, updatedAt: null };
+  return { days: days.map((d) => ({ ...d, items: sortItems(d.items) })), updatedBy: null, updatedAt: null, ...(opts.focusPark ? { focusPark: opts.focusPark } : {}) };
 }
 
 /** 合意リストのうち、どの日にも置かれていないもの */
@@ -294,6 +313,7 @@ export function parsePlan(data: unknown): Plan {
     : [];
   return {
     days,
+    ...(isPark(d.focusPark) ? { focusPark: d.focusPark } : {}),
     updatedBy: d.updatedBy === "toshi" || d.updatedBy === "tsuma" ? d.updatedBy : null,
     updatedAt: typeof d.updatedAt === "number" ? d.updatedAt : null,
   };
