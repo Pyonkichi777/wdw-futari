@@ -164,10 +164,12 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
           const latest = parsePlan((await tx.get(ref)).data());
           tx.set(ref, plain(change(latest)));
         });
-      } catch {
+      } catch (e) {
+        // 権限がない（ルールの問題）ときは、黙らずに画面に知らせる
+        if (typeof e === "object" && e !== null && (e as { code?: unknown }).code === "permission-denied") throw e;
         // 圏外などでサーバーに届かないときは、端末にある最新に当てて保存（つながったら自動で送られる）
         const cached = await getDocFromCache(ref).catch(() => null);
-        void setDoc(ref, plain(change(parsePlan(cached?.data())))).catch(() => undefined);
+        void setDoc(ref, plain(change(parsePlan(cached?.data())))).catch((err: unknown) => console.error("作戦の保存に失敗", err));
       }
     },
     subscribeChecks(cb) {

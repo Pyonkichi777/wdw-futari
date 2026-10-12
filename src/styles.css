@@ -2297,3 +2297,26 @@ button.glass {
   .sync.ok { color: #9fe0b5; }
   .sync.pending { color: #ffd27a; }
 }
+.excluded-list summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.excluded-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.excluded-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.excluded-row .mini {
+  white-space: nowrap;
+  flex: none;
+}

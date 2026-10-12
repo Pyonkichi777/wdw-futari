@@ -23,8 +23,17 @@ export interface DayPlan {
   items: PlanItem[];
 }
 
+/** 作戦から外したもの（どこにあったか・誰が外したかを残し、元に戻せるようにする） */
+export interface ExcludedItem extends PlanItem {
+  date: string;
+  by: PersonId | null;
+  at: number;
+}
+
 export interface Plan {
   days: DayPlan[];
+  /** 作戦から外したもの。作り直しても入れない。2人で共有 */
+  excluded?: ExcludedItem[];
   /** 本命パーク（いちばん空いている日に置く） */
   focusPark?: ParkId;
   updatedBy: PersonId | null;
@@ -215,9 +224,11 @@ export function buildPlan(
   consensus: readonly ConsensusItem[],
   rideById: (id: string) => Ride | undefined,
   dates: readonly string[],
-  opts: { focusPark?: ParkId } = {},
+  opts: { focusPark?: ParkId; excluded?: readonly ExcludedItem[] } = {},
 ): Plan {
+  const skip = new Set((opts.excluded ?? []).map((e) => e.rideId));
   const pool: Entry[] = consensus.flatMap((c, order): Entry[] => {
+    if (skip.has(c.rideId)) return [];
     const ride = rideById(c.rideId);
     return ride ? [{ ride, rank: c.rank, ...(c.meal ? { meal: c.meal } : {}), order }] : [];
   });
@@ -250,15 +261,22 @@ export function buildPlan(
   // パレードはマジックキングダムの日に1つ
   const mk = days.find((d) => d.morningPark === "MK");
   const hasParade = days.some((d) => d.items.some((i) => rideById(i.rideId)?.kind === "parade"));
-  if (mk && !hasParade && rideById("festival-of-fantasy")) mk.items.push({ rideId: "festival-of-fantasy", slot: "pm", method: "show", suggested: true });
+  if (mk && !hasParade && !skip.has("festival-of-fantasy") && rideById("festival-of-fantasy")) mk.items.push({ rideId: "festival-of-fantasy", slot: "pm", method: "show", suggested: true });
 
-  return { days: days.map((d) => ({ ...d, items: sortItems(d.items) })), updatedBy: null, updatedAt: null, ...(opts.focusPark ? { focusPark: opts.focusPark } : {}) };
+  return {
+    days: days.map((d) => ({ ...d, items: sortItems(d.items) })),
+    updatedBy: null,
+    updatedAt: null,
+    ...(opts.focusPark ? { focusPark: opts.focusPark } : {}),
+    ...(opts.excluded && opts.excluded.length > 0 ? { excluded: [...opts.excluded] } : {}),
+  };
 }
 
-/** 合意リストのうち、どの日にも置かれていないもの */
+/** 合意リストのうち、どの日にも置かれていないもの（自分たちで外したものは除く） */
 export function unplaced(plan: Plan, consensus: readonly ConsensusItem[]): ConsensusItem[] {
   const ids = new Set(plan.days.flatMap((d) => d.items.map((i) => i.rideId)));
-  return consensus.filter((c) => !ids.has(c.rideId));
+  const out = new Set((plan.excluded ?? []).map((e) => e.rideId));
+  return consensus.filter((c) => !ids.has(c.rideId) && !out.has(c.rideId));
 }
 
 /** 1つの項目を別の日・枠・乗り方に動かす（日の中の並びは時間の枠の順） */
@@ -270,19 +288,50 @@ export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: S
     return hit ? { ...d, items: d.items.filter((i) => i.rideId !== rideId) } : d;
   });
   const item: PlanItem = { ...(found ?? {}), rideId, slot: to.slot, method: to.method };
-  return { ...plan, days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
+  const excluded = (plan.excluded ?? []).filter((e) => e.rideId !== rideId);
+  return { ...withExcluded(plan, excluded), days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
 }
 
-/** まとめて外す */
-export const removeItems = (plan: Plan, rideIds: ReadonlySet<string>, date?: string): Plan => ({
-  ...plan,
-  days: plan.days.map((d) => (date && d.date !== date ? d : { ...d, items: d.items.filter((i) => !rideIds.has(i.rideId)) })),
-});
+const withExcluded = (plan: Plan, excluded: ExcludedItem[]): Plan => {
+  const { excluded: _old, ...rest } = plan;
+  return excluded.length > 0 ? { ...rest, excluded } : rest;
+};
 
-export const removeItem = (plan: Plan, rideId: string): Plan => ({
-  ...plan,
-  days: plan.days.map((d) => ({ ...d, items: d.items.filter((i) => i.rideId !== rideId) })),
-});
+/** まとめて外す（外したものは「外したもの」に記録し、あとで元の日・時間に戻せる） */
+export function removeItems(plan: Plan, rideIds: ReadonlySet<string>, date?: string, by: PersonId | null = null): Plan {
+  const at = Date.now();
+  const removed: ExcludedItem[] = [];
+  const days = plan.days.map((d) => {
+    if (date && d.date !== date) return d;
+    const hit = d.items.filter((i) => rideIds.has(i.rideId));
+    removed.push(...hit.map((i) => ({ ...i, date: d.date, by, at })));
+    return hit.length > 0 ? { ...d, items: d.items.filter((i) => !rideIds.has(i.rideId)) } : d;
+  });
+  const keep = (plan.excluded ?? []).filter((e) => !removed.some((r) => r.rideId === e.rideId));
+  return { ...withExcluded(plan, [...keep, ...removed]), days };
+}
+
+export const removeItem = (plan: Plan, rideId: string, by: PersonId | null = null): Plan => removeItems(plan, new Set([rideId]), undefined, by);
+
+/**
+ * 外したものを元の日・時間・乗り方に戻す。作り直しなどで元の日のパークが変わっていたら、
+ * そのアトラクションのパークの日に戻す（なければ元の日）
+ */
+export function restoreItem(plan: Plan, rideId: string, parkOf?: (id: string) => ParkId | undefined): Plan {
+  const ex = (plan.excluded ?? []).find((e) => e.rideId === rideId);
+  if (!ex) return plan;
+  const park = parkOf?.(rideId);
+  const fits = (d: DayPlan): boolean => !park || d.morningPark === park || d.eveningPark === park;
+  const original = plan.days.find((d) => d.date === ex.date);
+  const target = (original && fits(original) ? original : plan.days.find(fits)) ?? original ?? plan.days[0];
+  const rest = (plan.excluded ?? []).filter((e) => e.rideId !== rideId);
+  if (!target) return withExcluded(plan, rest);
+  const item: PlanItem = { rideId, slot: target.date === ex.date ? ex.slot : "am", method: ex.method, ...(ex.suggested ? { suggested: true } : {}) };
+  return {
+    ...withExcluded(plan, rest),
+    days: plan.days.map((d) => (d.date === target.date ? { ...d, items: sortItems([...d.items.filter((i) => i.rideId !== rideId), item]) } : d)),
+  };
+}
 
 export const setDayParks = (plan: Plan, date: string, parks: { morningPark: ParkId; eveningPark: ParkId }): Plan => ({
   ...plan,
@@ -317,8 +366,27 @@ export function parsePlan(data: unknown): Plan {
         return [{ date: day.date, morningPark: day.morningPark, eveningPark: day.eveningPark, items }];
       })
     : [];
+  const excluded = Array.isArray(d.excluded)
+    ? d.excluded.flatMap((y: unknown): ExcludedItem[] => {
+        if (typeof y !== "object" || y === null) return [];
+        const e = y as Record<string, unknown>;
+        if (typeof e.rideId !== "string" || typeof e.date !== "string" || typeof e.slot !== "string" || !SLOTS.has(e.slot) || typeof e.method !== "string" || !METHODS.has(e.method)) return [];
+        return [
+          {
+            rideId: e.rideId,
+            date: e.date,
+            slot: e.slot as Slot,
+            method: e.method as Method,
+            by: e.by === "toshi" || e.by === "tsuma" ? e.by : null,
+            at: typeof e.at === "number" ? e.at : 0,
+            ...(e.suggested === true ? { suggested: true } : {}),
+          },
+        ];
+      })
+    : [];
   return {
     days,
+    ...(excluded.length > 0 ? { excluded } : {}),
     ...(isPark(d.focusPark) ? { focusPark: d.focusPark } : {}),
     updatedBy: d.updatedBy === "toshi" || d.updatedBy === "tsuma" ? d.updatedBy : null,
     updatedAt: typeof d.updatedAt === "number" ? d.updatedAt : null,

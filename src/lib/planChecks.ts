@@ -18,6 +18,9 @@ export function checkPlan(plan: Plan, consensus: readonly ConsensusItem[], rideB
   for (const c of unplaced(plan, consensus)) {
     if (c.rank === "S") out.push({ level: "red", message: `Sの「${name(c.rideId)}」がどの日にも入っていません` });
   }
+  for (const e of plan.excluded ?? []) {
+    if (consensus.find((c) => c.rideId === e.rideId)?.rank === "S") out.push({ level: "yellow", message: `Sの「${name(e.rideId)}」を作戦から外しています（「外したもの」から戻せます）` });
+  }
 
   for (const d of plan.days) {
     const day = md(d.date);

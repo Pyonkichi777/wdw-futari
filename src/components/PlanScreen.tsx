@@ -16,6 +16,7 @@ import {
   needsMultiPass,
   removeItem,
   removeItems,
+  restoreItem,
   setDayParks,
   unplaced,
   type DayPlan,
@@ -33,6 +34,7 @@ import { ParkMap } from "./ParkMap";
 import { isLowPriority } from "../lib/priority";
 import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
 import type { Consensus, ParkId, PersonId, Rank, Ride } from "../types";
+import { SLOT_LABEL as SLOT_NAMES } from "../lib/plan";
 
 interface Props {
   me: PersonId;
@@ -91,8 +93,9 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
       return f ? { ...rest, focusPark: f } : rest;
     });
   const generate = (): void =>
-    save(() => {
-      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, focus ? { focusPark: focus } : {});
+    save((cur) => {
+      // 外したものは作り直しても入れない（記録も引き継ぐ）
+      const p = buildPlan(consensus.items, rideById, TRIP.parkDays, { ...(focus ? { focusPark: focus } : {}), ...(cur.excluded ? { excluded: cur.excluded } : {}) });
       return { ...p, days: p.days.map(routeDay) };
     });
   const voteText = (r: Ride): string | null => {
@@ -123,8 +126,8 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
   const removeLow = (date?: string): void => {
     const ids = lowIds(date);
     if (ids.size === 0) return;
-    if (window.confirm(`2人とも「どちらでも」の${ids.size}件を${date ? "この日の" : "すべての日の"}作戦から外します。外したものは下の「どの日にも入っていないもの」から戻せます。よろしいですか？`)) {
-      save((p) => removeItems(p, ids, date));
+    if (window.confirm(`2人とも「どちらでも」の${ids.size}件を${date ? "この日の" : "すべての日の"}作戦から外します。外したものは下の「🗑 外したもの」に記録され、2人で共有されます。いつでも元に戻せます。よろしいですか？`)) {
+      save((p) => removeItems(p, ids, date, me));
     }
   };
   const warnings = checkPlan(plan, consensus.items, rideById);
@@ -187,7 +190,7 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
             setEditing(null);
           }}
           onRemove={(id) => {
-            save((p) => removeItem(p, id));
+            save((p) => removeItem(p, id, me));
             setEditing(null);
           }}
           days={plan.days}
@@ -221,6 +224,8 @@ export function PlanScreen({ me, consensus, plan, onUpdate, pending, votes, chec
           </ul>
         </div>
       )}
+
+      <ExcludedList plan={plan} rankOf={rankOf} onRestore={(ids) => save((p) => ids.reduce((acc, id) => restoreItem(acc, id, (x) => rideById(x)?.park), p))} />
 
       <LightningLaneSheet plan={plan} />
       <LightningLaneGuide />
@@ -660,5 +665,49 @@ function FocusPicker({ value, onChange }: { value: ParkId | ""; onChange: (p: Pa
       </select>
       <small className="note">混み具合は曜日の一般的な傾向（土＞日＞月＞火・水）で判断しています。</small>
     </label>
+  );
+}
+
+/** 作戦から外したもの（2人で共有）。元の日・時間に戻せる */
+function ExcludedList({ plan, rankOf, onRestore }: { plan: Plan; rankOf: (id: string) => Rank | undefined; onRestore: (ids: string[]) => void }) {
+  const list = plan.excluded ?? [];
+  if (list.length === 0) return null;
+  return (
+    <details className="plan-day excluded-list">
+      <summary>
+        <strong>🗑 外したもの（{list.length}件）</strong>
+        <span className="note">作り直しても入りません。押すと元に戻せます</span>
+      </summary>
+      <ul className="plan-items">
+        {list.map((e) => {
+          const r = rideById(e.rideId);
+          if (!r) return null;
+          const rank = rankOf(e.rideId);
+          return (
+            <li key={e.rideId} className="excluded-row">
+              <div>
+                {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>} <strong>{r.nameJa}</strong>
+                <small>
+                  元: {dayLabel(e.date)} {SLOT_NAMES[e.slot]}
+                  {e.by && `・${e.by === "toshi" ? "Toshi" : "妻"}が外した`}
+                  {e.at > 0 && `（${new Date(e.at).toLocaleDateString("ja-JP")}）`}
+                </small>
+              </div>
+              <button className="mini" onClick={() => onRestore([e.rideId])}>
+                ↩ 戻す
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        className="link"
+        onClick={() => {
+          if (window.confirm(`外した${list.length}件を、すべて元の日・時間に戻します。よろしいですか？`)) onRestore(list.map((e) => e.rideId));
+        }}
+      >
+        すべて元に戻す
+      </button>
+    </details>
   );
 }
