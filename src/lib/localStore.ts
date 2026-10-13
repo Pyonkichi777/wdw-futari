@@ -3,6 +3,7 @@ import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, type AllMeals } from "./meals";
 import { emptyPlan, type Plan } from "./plan";
 import type { Checks } from "./checks";
+import { addSnapshot, parseSnapshots, removeSnapshot, toStored, type PlanSnapshot } from "./snapshots";
 import type { Store, Unsubscribe } from "./store";
 
 const VOTES_KEY = "wdw-futari:demo:votes";
@@ -11,6 +12,7 @@ const BANNER_KEY = "wdw-futari:demo:banner";
 const MEALS_KEY = "wdw-futari:demo:meals";
 const PLAN_KEY = "wdw-futari:demo:plan";
 const CHECKS_KEY = "wdw-futari:demo:checks";
+const SNAP_KEY = "wdw-futari:demo:snapshots";
 
 function read<T>(key: string, fallback: () => T): T {
   try {
@@ -41,6 +43,8 @@ export function createLocalStore(): Store {
   const planListeners = new Set<(p: Plan) => void>();
   let checks: Checks = read<Checks>(CHECKS_KEY, () => ({}));
   const checkListeners = new Set<(c: Checks) => void>();
+  let snaps: PlanSnapshot[] = parseSnapshots(read<unknown>(SNAP_KEY, () => null));
+  const snapListeners = new Set<(s: PlanSnapshot[]) => void>();
   let banner: string | null = read<string | null>(BANNER_KEY, () => null);
   const bannerListeners = new Set<(b: string | null) => void>();
 
@@ -56,6 +60,10 @@ export function createLocalStore(): Store {
       if (e.key === PLAN_KEY) {
         plan = read(PLAN_KEY, emptyPlan);
         planListeners.forEach((l) => l(plan));
+      }
+      if (e.key === SNAP_KEY) {
+        snaps = parseSnapshots(read<unknown>(SNAP_KEY, () => null));
+        snapListeners.forEach((l) => l(snaps));
       }
       if (e.key === CHECKS_KEY) {
         checks = read<Checks>(CHECKS_KEY, () => ({}));
@@ -96,6 +104,19 @@ export function createLocalStore(): Store {
       plan = change(read(PLAN_KEY, emptyPlan));
       write(PLAN_KEY, plan);
       planListeners.forEach((l) => l(plan));
+    },
+    subscribeSnapshots: (cb) => listen(snapListeners, cb, snaps),
+    async saveSnapshot(snap: PlanSnapshot, replaceOldestOwn: boolean) {
+      const r = addSnapshot(parseSnapshots(read<unknown>(SNAP_KEY, () => null)), snap, replaceOldestOwn);
+      if (!r.ok) throw new Error("full");
+      snaps = r.list;
+      write(SNAP_KEY, toStored(snaps));
+      snapListeners.forEach((l) => l(snaps));
+    },
+    async deleteSnapshot(id: string, by: PersonId) {
+      snaps = removeSnapshot(parseSnapshots(read<unknown>(SNAP_KEY, () => null)), id, by);
+      write(SNAP_KEY, toStored(snaps));
+      snapListeners.forEach((l) => l(snaps));
     },
     subscribeChecks: (cb) => listen(checkListeners, cb, checks),
     async setCheck(id: string, done: boolean, by: PersonId) {

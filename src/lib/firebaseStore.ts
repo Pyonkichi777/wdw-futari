@@ -19,6 +19,7 @@ import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
 import { parsePlan } from "./plan";
 import { parseChecks } from "./checks";
+import { addSnapshot, parseSnapshots, removeSnapshot, toStored } from "./snapshots";
 import type { AuthUser, Store } from "./store";
 
 export interface FirebaseBackend {
@@ -171,6 +172,24 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
         const cached = await getDocFromCache(ref).catch(() => null);
         void setDoc(ref, plain(change(parsePlan(cached?.data())))).catch((err: unknown) => console.error("作戦の保存に失敗", err));
       }
+    },
+    subscribeSnapshots(cb) {
+      return onSnapshot(doc(fb.db, "consensus", "snapshots"), (snap) => cb(parseSnapshots(snap.data())));
+    },
+    async saveSnapshot(item, replaceOldestOwn) {
+      const ref = doc(fb.db, "consensus", "snapshots");
+      // 2人が同時に保存しても上限（合計10件）を超えないよう、最新の一覧に足す
+      await runTransaction(fb.db, async (tx) => {
+        const r = addSnapshot(parseSnapshots((await tx.get(ref)).data()), item, replaceOldestOwn);
+        if (!r.ok) throw new Error("full");
+        tx.set(ref, toStored(r.list));
+      });
+    },
+    async deleteSnapshot(id, by) {
+      const ref = doc(fb.db, "consensus", "snapshots");
+      await runTransaction(fb.db, async (tx) => {
+        tx.set(ref, toStored(removeSnapshot(parseSnapshots((await tx.get(ref)).data()), id, by)));
+      });
     },
     subscribeChecks(cb) {
       return onSnapshot(doc(fb.db, "consensus", "checks"), (snap) => cb(parseChecks(snap.data()?.done)));

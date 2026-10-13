@@ -32,6 +32,8 @@ import {
 import { checkPlan, fixAllReds } from "../lib/planChecks";
 import { clock, dayTimes } from "../lib/bookTimes";
 import type { HoursFeed } from "../lib/hours";
+import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
+import { SnapshotPanel } from "./SnapshotPanel";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
@@ -61,6 +63,10 @@ interface Props {
   crowd: CrowdFeed | null;
   /** 公式の営業時間（まだ公開されていなければ null） */
   hours: HoursFeed | null;
+  /** 作戦の保存（2人それぞれ。合計10件まで） */
+  snapshots: readonly PlanSnapshot[];
+  onSaveSnapshot: (snap: PlanSnapshot, replaceOldestOwn: boolean) => Promise<void>;
+  onDeleteSnapshot: (id: string) => Promise<void>;
 }
 
 const parkDayLabels = ITINERARY.filter((d) => d.park).map((d) => d.date);
@@ -81,7 +87,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd, hours }: Props) {
+export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd, hours, snapshots, onSaveSnapshot, onDeleteSnapshot }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -249,6 +255,15 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
         <FocusPicker value={focusParks} onChange={setFocusParks} plan={plan} crowd={crowd} fixed={plan.fixedParks ?? {}} onPick={pickPark} onClearFixed={clearFixed} />
         <p className="note">優先順位を変えると、その場で作戦全体（日割り・乗り方・時刻・事前の予約）を組み直し、2人で共有します。手で直したところは元に戻ります（外したもの・予約のチェックは残ります）。</p>
       </details>
+
+      <SnapshotPanel
+        me={me}
+        list={snapshots}
+        plan={plan}
+        onSave={(name, replace) => onSaveSnapshot({ id: newSnapshotId(), by: me, savedAt: Date.now(), name, plan: { ...plan, updatedBy: me, updatedAt: Date.now() } }, replace)}
+        onDelete={onDeleteSnapshot}
+        onRestore={(snap) => save(() => snap.plan)}
+      />
 
       {stale && (
         <div className="stale-bar">
@@ -926,6 +941,9 @@ function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]
       )}
       <button className="jump" onClick={() => jumpTo("plan-rsv")}>
         📅予約
+      </button>
+      <button className="jump" onClick={() => jumpTo("plan-save")}>
+        💾保存
       </button>
       {days.map((d) => (
         <button key={d.date} className={`jump park-${d.morningPark}${d.date === today ? " today" : ""}`} onClick={() => jumpTo(`plan-day-${d.date}`)}>

@@ -1,3 +1,4 @@
+import type { PlanSnapshot } from "./lib/snapshots";
 import { fetchHoursFeed, type HoursFeed } from "./lib/hours";
 import { fetchCrowdFeed, type CrowdFeed } from "./lib/crowd";
 import { useEffect, useMemo, useState } from "react";
@@ -167,6 +168,8 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
       alive = false;
     };
   }, []);
+  const [snapshots, setSnapshots] = useState<PlanSnapshot[]>([]);
+  useEffect(() => store.subscribeSnapshots(setSnapshots), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
@@ -272,6 +275,9 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
             crowd={crowd}
             hours={hours}
+            snapshots={snapshots}
+            onSaveSnapshot={(snap, replace) => store.saveSnapshot(snap, replace)}
+            onDeleteSnapshot={(id) => store.deleteSnapshot(id, me).catch(report)}
           />
         )}
         {tab === "news" && <NewsScreen />}

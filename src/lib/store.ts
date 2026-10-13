@@ -3,6 +3,7 @@ import type { AllVotes } from "./consensus";
 import type { AllMeals } from "./meals";
 import type { Plan } from "./plan";
 import type { Checks } from "./checks";
+import type { PlanSnapshot } from "./snapshots";
 
 export type Unsubscribe = () => void;
 
@@ -27,6 +28,12 @@ export interface Store {
   /** 予約・購入の「済」チェック（2人で共有） */
   subscribeChecks(cb: (c: Checks) => void): Unsubscribe;
   setCheck(id: string, done: boolean, by: PersonId): Promise<void>;
+  /** 作戦の保存（2人それぞれが持つ。2人合計10件まで。新しい順） */
+  subscribeSnapshots(cb: (list: PlanSnapshot[]) => void): Unsubscribe;
+  /** 上限なら replaceOldestOwn のときだけ自分のいちばん古い保存と入れ替える。入れ替えられなければ Error("full") */
+  saveSnapshot(snap: PlanSnapshot, replaceOldestOwn: boolean): Promise<void>;
+  /** 自分の保存だけ削除できる */
+  deleteSnapshot(id: string, by: PersonId): Promise<void>;
   /** バナー写真（JPEGのdata URL）。2人だけが見られる場所に保存する。null は未設定 */
   subscribeBanner(cb: (dataUrl: string | null) => void): Unsubscribe;
   saveBanner(dataUrl: string | null): Promise<void>;
