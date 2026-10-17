@@ -106,3 +106,12 @@ export function excludeAllLow(plan: Plan, consensus: readonly ConsensusItem[], i
   });
   return { ...removed, ...(extra.length > 0 || removed.excluded ? { excluded: [...(removed.excluded ?? []), ...extra] } : {}), dropLow: true };
 }
+
+/** どの日にも入っていないものを「見送る」（外したものに記録。あとで戻せる。作り直しても入れない） */
+export function skipUnplaced(plan: Plan, c: ConsensusItem, rideById: (id: string) => Ride | undefined, by: PersonId | null): Plan {
+  const r = rideById(c.rideId);
+  if (!r || (plan.excluded ?? []).some((e) => e.rideId === c.rideId)) return plan;
+  const slot: Slot = r.dining ? MEAL_SLOT[c.meal ?? r.dining.meals[0] ?? "lunch"] : r.kind === "night" ? "night" : "pm";
+  const item: ExcludedItem = { rideId: c.rideId, date: "", slot, method: bestMethod(r, undefined, rideById), by, at: Date.now() };
+  return { ...plan, excluded: [...(plan.excluded ?? []), item] };
+}

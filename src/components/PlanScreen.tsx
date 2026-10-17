@@ -35,7 +35,7 @@ import type { HoursFeed } from "../lib/hours";
 import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
 import { SnapshotPanel } from "./SnapshotPanel";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
-import { applyFix, excludeAllLow } from "../lib/planFixes";
+import { applyFix, excludeAllLow, skipUnplaced } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook, llDayDifficulty } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
@@ -206,6 +206,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   const kept = new Set(plan.keptLow ?? []);
   // 「どちらでも」をまとめて外した後は、新しく「どちらでも」になったものも作戦に出さない（次の作り直しで記録される）
   const left = unplaced(plan, items).filter((c) => !(plan.dropLow && isLow(c.rideId) && !kept.has(c.rideId)));
+  const leftSA = left.filter((c) => c.rank === "S" || c.rank === "A");
 
   return (
     <section className="plan">
@@ -222,6 +223,27 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       <WhereNow plan={plan} onHere={setHere} />
 
       <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} hours={hours} />
+
+      {leftSA.length > 0 && (
+        <div className="left-sa">
+          <p>
+            📦 まだどの日にも入っていない: {(["S", "A"] as const).map((rk) => {
+              const n = leftSA.filter((c) => c.rank === rk);
+              return n.length > 0 ? `${rk} ${n.length}件（${n.map((c) => rideById(c.rideId)?.nameJa ?? c.rideId).join("、")}）` : null;
+            }).filter(Boolean).join(" ／ ")}
+          </p>
+          <small>日に入れるか、「見送る」かを2人で決めてください（勝手には入れません）</small>
+          <button
+            className="mini"
+            onClick={() => {
+              setLeftOpen(true);
+              requestAnimationFrame(() => document.getElementById("plan-left")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+            }}
+          >
+            一覧で決める
+          </button>
+        </div>
+      )}
 
       <div id="plan-check" className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
         <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 自動チェックで見つかった🔴はありません（時刻は目安。営業時間・上演時刻の確定はまだ）"}</p>
@@ -346,6 +368,14 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
               return (
                 <li key={c.rideId} id={`pi-left-${c.rideId}`}>
                   <ItemRow ride={r} rank={c.rank} item={null} onZukan={() => onZukan(r.id, `pi-left-${r.id}`)} onClick={() => setEditing(editing === r.id ? null : r.id)} />
+                  <button
+                    className="mini skip-left"
+                    onClick={() => {
+                      if (window.confirm(`「${r.nameJa}」を今回は見送ります。「🗑 外したもの」に記録され、作り直しても入りません。いつでも戻せます。よろしいですか？`)) save((p) => skipUnplaced(p, c, rideById, me));
+                    }}
+                  >
+                    今回は見送る
+                  </button>
                   {editing === r.id && (
                     <ItemEditor
                       ride={r}

@@ -2769,3 +2769,27 @@ details.rank-group > summary h3 {
   color: var(--muted);
   margin: 2px 0 6px;
 }
+.left-sa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.left-sa p {
+  margin: 0;
+  flex: 1 1 100%;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.left-sa small {
+  flex: 1 1 12em;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.skip-left {
+  margin: 4px 0 0;
+}

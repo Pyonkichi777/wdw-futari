@@ -78,3 +78,16 @@ describe("作戦の時刻と、予約の「選ぶ時間枠」は同じ", () => {
     expect(checked).toBeGreaterThan(2);
   });
 });
+
+describe("N03: どの日にも入っていないものを「見送る」", async () => {
+  const { skipUnplaced } = await import("./planFixes");
+  const { unplaced } = await import("./plan");
+  it("見送ると一覧から消え、作り直しても入らず、戻せる", () => {
+    const base = buildPlan(consensus, rideById, TRIP.parkDays);
+    const c = consensus.find((x) => x.rideId === "park-be-our-guest")!;
+    const p = skipUnplaced({ ...base, days: base.days.map((d) => ({ ...d, items: d.items.filter((i) => i.rideId !== c.rideId) })) }, c, rideById, "tsuma");
+    expect(unplaced(p, consensus).some((x) => x.rideId === c.rideId)).toBe(false);
+    expect(placed(buildPlan(consensus, rideById, TRIP.parkDays, { excluded: p.excluded! }))).not.toContain(c.rideId);
+    expect(placed(restoreItem(p, c.rideId, (id) => rideById(id)?.park))).toContain(c.rideId);
+  });
+});
