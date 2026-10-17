@@ -2,6 +2,8 @@ import { useState } from "react";
 import { parkName } from "../data/parks";
 import type { Plan } from "../lib/plan";
 import { MAX_SNAPSHOTS, type PlanSnapshot } from "../lib/snapshots";
+import { planDiff } from "../lib/planDiff";
+import { rideById } from "../data/rides";
 import { PERSON_LABEL } from "../lib/store";
 import type { PersonId } from "../types";
 
@@ -95,7 +97,10 @@ export function SnapshotPanel({
                     <button
                       className="mini"
                       onClick={() => {
-                        if (window.confirm(`「${s.name}」（${when(s.savedAt)}）の作戦に戻します。今の作戦は2人とも置き換わります（予約のチェックはそのまま）。今の作戦を残したいときは、先に保存してください。よろしいですか？`)) onRestore(s);
+                        // 戻す前に、何が変わるかを見せる
+                        const diff = planDiff(plan, s.plan, (id) => rideById(id)?.nameJa ?? id);
+                        const what = diff.length > 0 ? `変わるところ:\n${diff.join("\n")}` : "今の作戦と同じ内容です（日割り・予定の出入りはありません）";
+                        if (window.confirm(`「${s.name}」（${when(s.savedAt)}）の作戦に戻します。\n\n${what}\n\n今の作戦は2人とも置き換わります（予約のチェックはそのまま）。今の作戦を残したいときは、先に保存してください。よろしいですか？`)) onRestore(s);
                       }}
                     >
                       この作戦に戻す
