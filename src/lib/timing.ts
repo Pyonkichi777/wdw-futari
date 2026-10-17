@@ -103,9 +103,7 @@ export function dayTimeline(day: DayPlan, rideById: (id: string) => Ride | undef
     go(ride.park);
     segments.push({ type: "item", item, ride, park: ride.park, minutes: itemMinutes(ride, item.method) });
   }
-  if (day.items.length === 0) go(day.morningPark);
-  // 夕方に別のパークへ行く日は、そこに予定がなくても移動を表示する（夕食・散策など）
-  if (day.eveningPark !== day.morningPark) go(day.eveningPark);
+  // 予定のないパークへの移動は描かない（予定のない日の往復や、予定のない「夕方から」のパークの経由を、確定した行程に見せない）
   go("HOTEL");
   const totalMinutes = segments.reduce((s, x) => s + (x.type === "travel" ? x.leg.minutes : x.minutes), 0);
   return { segments, totalMinutes };

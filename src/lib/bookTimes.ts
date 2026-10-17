@@ -46,7 +46,7 @@ export function dayTimes(
   rideById: (id: string) => Ride | undefined,
   hours?: HoursFeed | null,
   fixed?: FixedTimes,
-): { start: number; end: number; busy: number; hints: Map<string, TimeHint>; official: boolean; lateStart: boolean } {
+): { start: number; end: number; busy: number; idle: number; hints: Map<string, TimeHint>; official: boolean; lateStart: boolean } {
   const out = new Map<string, TimeHint>();
   const { segments } = dayTimeline(day, rideById);
   const hasEarly = day.items.some((i) => i.method === "early");
@@ -81,8 +81,11 @@ export function dayTimes(
   for (const seg of segments) {
     if (seg.type === "travel") {
       // 最初の移動はホテルからの朝の移動（開園時刻に着くように出る）
-      if (arrived) t += seg.leg.minutes;
-      busy += seg.leg.minutes;
+      // パーク着より前（ホテルからの朝の移動）は、パーク着〜ホテル着の中に入らない
+      if (arrived) {
+        t += seg.leg.minutes;
+        busy += seg.leg.minutes;
+      }
       continue;
     }
     const first = !arrived;
@@ -130,5 +133,5 @@ export function dayTimes(
     }
     t = at + minutes;
   }
-  return { start, end: t, busy, hints: out, official: h !== undefined, lateStart };
+  return { start, end: t, busy, idle: Math.max(0, t - start - busy), hints: out, official: h !== undefined, lateStart };
 }

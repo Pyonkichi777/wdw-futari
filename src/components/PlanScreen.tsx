@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { LL_LONG, LL_SHORT, LL_VERIFIED_AT, llKind, type LlKind } from "../lib/lightningLane";
 import { RIDES } from "../data/rides";
-import { DAY_LIMIT_MINUTES, TRANSPORT_LABEL, dayTimeline, hoursText } from "../lib/timing";
+import { DAY_LIMIT_MINUTES, TRANSPORT_LABEL, dayTimeline, hoursText, travel } from "../lib/timing";
 import { WhereNow, todayInOrlando } from "./WhereNow";
 import { PARKS, parkName } from "../data/parks";
 import { rideById } from "../data/rides";
@@ -512,12 +512,20 @@ function DayTimeline({
   const times = dayTimes(day, rideById, hours);
   const official = hours?.days[day.date]?.[day.morningPark];
   const early = day.items.some((i) => i.method === "early");
+  // 「夕方から」のパークに予定がない（移動は描かず、案内だけ出す）
+  const eveningIdle = day.items.length > 0 && day.eveningPark !== day.morningPark && !day.items.some((i) => rideById(i.rideId)?.park === day.eveningPark);
   let lastSlot: Slot | null = null;
   return (
     <>
-      <p className={totalMinutes > DAY_LIMIT_MINUTES ? "plan-total over" : "plan-total"}>
-        ⏱ 合計 {hoursText(totalMinutes)}（移動込みの目安）{totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
-      </p>
+      {day.items.length > 0 && (
+        <p className={totalMinutes > DAY_LIMIT_MINUTES ? "plan-total over" : "plan-total"}>
+          ⏱ 予定の時間（乗り物・食事・ショー・移動の合計）{hoursText(totalMinutes)}
+          {totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
+          <br />
+          🕗 パーク着〜ホテル着 {hoursText(Math.max(0, times.end - times.start))}
+          {times.idle >= 30 && `（うち空き時間 ${hoursText(times.idle)}。食事やショーの時刻を待つ時間で、休憩にあててもよい）`}
+        </p>
+      )}
       <p className="plan-clock">
         {day.items.length > 0 ? times.lateStart
             ? `🕗 朝の予定なし。${clock(times.start)}頃の最初の予定に合わせて出かける → 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着`
@@ -529,6 +537,11 @@ function DayTimeline({
           予約の「選ぶ時間枠」と同じ計算です
         </small>
       </p>
+      {eveningIdle && (
+        <p className="plan-evening-idle">
+          🌙 夕方から{parkName(day.eveningPark)}の予定（ホッパー）ですが、まだ何も入っていません。行くなら移動 約{travel(day.morningPark, day.eveningPark)?.minutes ?? 30}分
+        </p>
+      )}
       <ul className="plan-items timeline">
         {segments.map((seg, i) => {
           if (seg.type === "travel") {

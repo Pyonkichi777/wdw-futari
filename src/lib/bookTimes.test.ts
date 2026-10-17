@@ -119,3 +119,18 @@ describe("改善提案v2 I02・N01・I05", () => {
     expect(ok.get("zootopia")!.at).toBeGreaterThanOrEqual(16 * 60);
   });
 });
+
+describe("改善提案v2 N02・N04", async () => {
+  const { dayTimeline } = await import("./timing");
+  it("N02: パーク着〜ホテル着 = 予定の時間 + 空き時間", () => {
+    const d: DayPlan = { date: "2027-05-01", morningPark: "MK", eveningPark: "MK", items: [{ rideId: "tron", slot: "early", method: "early" }, { rideId: "dine-cinderella-royal-table", slot: "dinner", method: "meal" }] };
+    const t = dayTimes(d, rideById);
+    expect(t.end - t.start).toBe(t.busy + t.idle);
+    expect(t.idle).toBeGreaterThan(5 * 60);
+  });
+  it("N04: 予定のない日・予定のない「夕方から」のパークへは移動を描かない", () => {
+    expect(dayTimeline({ date: "2027-05-05", morningPark: "AK", eveningPark: "AK", items: [] }, rideById).segments).toEqual([]);
+    const segs = dayTimeline({ date: "2027-05-04", morningPark: "AK", eveningPark: "EP", items: [{ rideId: "everest", slot: "am", method: "standby" }] }, rideById).segments;
+    expect(segs.some((s) => s.type === "travel" && s.to === "EP")).toBe(false);
+  });
+});

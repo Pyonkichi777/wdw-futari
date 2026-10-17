@@ -2764,3 +2764,8 @@ details.rank-group > summary {
 details.rank-group > summary h3 {
   margin: 0;
 }
+.plan-evening-idle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 2px 0 6px;
+}
