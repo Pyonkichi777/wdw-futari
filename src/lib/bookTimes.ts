@@ -15,7 +15,6 @@ const OPEN = 9 * 60;
 const EARLY_OPEN = 8 * 60 + 30;
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
-const round30 = (m: number): number => Math.round(m / 30) * 30;
 export const clock = (m: number): string => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 
 export interface TimeHint {
@@ -32,19 +31,36 @@ export function dayTimes(
   day: DayPlan,
   rideById: (id: string) => Ride | undefined,
   hours?: HoursFeed | null,
-): { start: number; end: number; hints: Map<string, TimeHint>; official: boolean } {
+): { start: number; end: number; hints: Map<string, TimeHint>; official: boolean; lateStart: boolean } {
   const out = new Map<string, TimeHint>();
   const { segments } = dayTimeline(day, rideById);
   const hasEarly = day.items.some((i) => i.method === "early");
   // 公式の営業時間が出ていればそれを使う（開園前入園は公式の時刻、なければ開園の30分前）
   const h = hours?.days[day.date]?.[day.morningPark];
   const open = h ? toMinutes(h.open) : OPEN;
-  const start = hasEarly ? (h?.early ? toMinutes(h.early) : h ? open - 30 : EARLY_OPEN) : open;
+  // 朝の予定がない日（予備日で夕食だけ、など）は、その日の最初の予定に合わせて出かける
+  const firstSlot = day.items[0]?.slot;
+  const lateStart = firstSlot === "lunch" || firstSlot === "pm" || firstSlot === "dinner" || firstSlot === "night";
+  const start = lateStart
+    ? firstSlot === "lunch"
+      ? 11 * 60 + 30
+      : firstSlot === "pm"
+        ? 13 * 60
+        : 17 * 60 + 30
+    : hasEarly
+      ? h?.early
+        ? toMinutes(h.early)
+        : h
+          ? open - 30
+          : EARLY_OPEN
+      : open;
   let t = start;
   let arrived = false;
   // 表示する時刻は、前の項目より前にならないようにする（上から下へ時間が進む）
   let last = 0;
   const ceil30 = (m: number): number => Math.ceil(m / 30) * 30;
+  // 「○○頃」は実際より早く見せない（前の予定が終わる前の時刻を出さない）ように切り上げる
+  const ceil10 = (m: number): number => Math.ceil(m / 10) * 10;
   const put = (id: string, at: number, text: (m: number) => string): number => {
     const m = Math.max(at, last);
     last = m;
@@ -63,29 +79,30 @@ export function dayTimes(
     if (item.method === "meal") {
       const want =
         item.slot === "dinner" || item.slot === "night"
-          ? clamp(round30(t), 17 * 60 + 30, 19 * 60)
+          ? clamp(ceil30(t), 17 * 60 + 30, 19 * 60)
           : item.slot === "lunch" || item.slot === "pm"
-            ? clamp(round30(t), 11 * 60 + 30, 13 * 60 + 30)
+            ? clamp(ceil30(t), 11 * 60 + 30, 13 * 60 + 30)
             : // 朝食: その日の最初なら開園前の 8:00 頃、朝イチの後なら終わってすぐ
               first
               ? 8 * 60
               : ceil30(t);
-      const at = put(ride.id, want, (m) => `${clock(m)}頃`);
+      // 混む時間を避けた枠（13:30・19:00）より遅くなったら、実際に着ける時刻のまま出す
+      const at = put(ride.id, Math.max(want, first ? want : ceil10(t)), (m) => `${clock(m)}頃`);
       t = (first ? at : Math.max(t, at)) + minutes;
       continue;
     }
     if (ride.kind === "night") {
       // 夜のショー（花火など）は暗くなってから。場所取りを含めて 20:30 頃から
-      const at = put(ride.id, Math.max(round30(t), 20 * 60 + 30), (m) => `${clock(m)}頃（上演時刻は当日アプリで確認）`);
+      const at = put(ride.id, Math.max(ceil30(t), 20 * 60 + 30), (m) => `${clock(m)}頃（上演時刻は当日アプリで確認）`);
       t = at + minutes;
       continue;
     }
     if (item.method === "multi" || item.method === "multiExtra" || item.method === "single") {
       put(ride.id, Math.floor(t / 30) * 30, (m) => `${clock(m)}〜${clock(m + 60)}の枠`);
     } else {
-      put(ride.id, round30(t), (m) => `${clock(m)}頃`);
+      put(ride.id, ceil10(t), (m) => `${clock(m)}頃`);
     }
     t += minutes;
   }
-  return { start, end: t, hints: out, official: h !== undefined };
+  return { start, end: t, hints: out, official: h !== undefined, lateStart };
 }

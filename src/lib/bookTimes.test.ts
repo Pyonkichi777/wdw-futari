@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { rideById } from "../data/rides";
 import type { DayPlan } from "./plan";
-import { timeHints } from "./bookTimes";
+import { dayTimes, timeHints } from "./bookTimes";
 
 const day: DayPlan = {
   date: "2027-05-02",
@@ -56,5 +56,27 @@ describe("時刻は上から下へ進む（前の項目より前の時刻にな�
   it("朝食がその日の最初なら、開園前の 8:00 頃", () => {
     const d: DayPlan = { date: "2027-05-01", morningPark: "EP", eveningPark: "EP", items: [{ rideId: "park-creperie-de-paris", slot: "am", method: "meal" }, { rideId: "test-track", slot: "am", method: "standby" }] };
     expect(timeHints(d, rideById).get("park-creperie-de-paris")?.text).toBe("8:00頃");
+  });
+});
+
+describe("改善提案 E02・E05", () => {
+  it("E02: 8:30の朝イチ（約35分）の次は、9:05より前の時刻を出さない", () => {
+    const d: DayPlan = {
+      date: "2027-05-03",
+      morningPark: "HS",
+      eveningPark: "HS",
+      items: [
+        { rideId: "rise-of-the-resistance", slot: "early", method: "early" },
+        { rideId: "millennium-falcon", slot: "am", method: "standby" },
+      ],
+    };
+    const h = timeHints(d, rideById);
+    expect(h.get("millennium-falcon")!.at).toBeGreaterThanOrEqual(9 * 60 + 5);
+  });
+  it("E05: 朝の予定がなく夕食だけの日は、9:00パーク着とせず夕食に合わせる", () => {
+    const d: DayPlan = { date: "2027-05-05", morningPark: "AK", eveningPark: "MK", items: [{ rideId: "dine-cinderella-royal-table", slot: "dinner", method: "meal" }] };
+    const t = dayTimes(d, rideById);
+    expect(t.lateStart).toBe(true);
+    expect(t.start).toBe(17 * 60 + 30);
   });
 });

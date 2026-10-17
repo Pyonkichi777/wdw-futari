@@ -224,7 +224,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} hours={hours} />
 
       <div id="plan-check" className={reds.length > 0 ? "plan-check bad" : "plan-check ok"}>
-        <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 必ず直すところはありません"}</p>
+        <p className="plan-check-title">{reds.length > 0 ? `🔴 直すところが${reds.length}件あります` : "✅ 自動チェックで見つかった🔴はありません（時刻は目安。営業時間・上演時刻の確定はまだ）"}</p>
         <ul>
           {warnings.map((w, i) => (
             <li key={i} className={`w-${w.level}`}>
@@ -519,7 +519,9 @@ function DayTimeline({
         ⏱ 合計 {hoursText(totalMinutes)}（移動込みの目安）{totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
       </p>
       <p className="plan-clock">
-        {day.items.length > 0 ? `🕗 ${clock(times.start)} パーク着（${early ? "開園前入園" : "開園"}）→ 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着` : "🕗 まだ予定がありません"}
+        {day.items.length > 0 ? times.lateStart
+            ? `🕗 朝の予定なし。${clock(times.start)}頃の最初の予定に合わせて出かける → 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着`
+            : `🕗 ${clock(times.start)} パーク着（${early ? "開園前入園" : "開園"}）→ 予定が終わって 🏨 ${clock(times.end)}頃 ホテル着` : "🕗 まだ予定がありません"}
         <small>
           {official
             ? `公式の営業時間 ${official.early ? `開園前入園 ${official.early}・` : ""}開園 ${official.open}〜閉園 ${official.close}（${hours?.fetchedAt}取得）で計算。`
