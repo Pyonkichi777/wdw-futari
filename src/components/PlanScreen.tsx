@@ -37,7 +37,7 @@ import { SnapshotPanel } from "./SnapshotPanel";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
-import { bookingSteps, daysUntil, isHardToBook } from "../lib/reservations";
+import { bookingSteps, daysUntil, isHardToBook, llDayDifficulty } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import type { Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
@@ -703,15 +703,14 @@ function LightningLaneSheet({ plan }: { plan: Plan }) {
       return { d, multi: pick("multi"), extra: pick("multiExtra"), single: pick("single") };
     })
     .filter((r) => r.multi.length + r.extra.length + r.single.length > 0);
-  // 取りにくい日から予約する（人気グループ・Sの多い日が先）
-  const difficulty = (r: (typeof rows)[number]): number => r.multi.filter((x) => x.multiPassTier === 1).length * 2 + r.multi.length + r.single.length;
-  const ordered = [...rows].sort((a, b) => difficulty(b) - difficulty(a));
+  // 取りにくい日から予約する（予約の段取りと同じ基準。同点なら日付順）
+  const ordered = [...rows].sort((a, b) => llDayDifficulty(b.d, rideById) - llDayDifficulty(a.d, rideById) || a.d.date.localeCompare(b.d.date));
   if (ordered.length === 0) return null;
   return (
     <div className="plan-day ll-sheet">
       <h3>⚡ 時短パスの段取り表</h3>
       <p className="note">
-        予約開始: <strong>{lightningLaneOpensJst(TRIP.checkIn)}（日本時間）</strong>。Multi Pass・Single Pass とも、ホテル宿泊者は滞在中の全日分をこの日時から買えます。下の順番（取りにくい日から）で予約します。
+        予約開始: <strong>{lightningLaneOpensJst(TRIP.checkIn)}（日本時間）</strong>。Multi Pass・Single Pass とも、ホテル宿泊者は滞在中の全日分をこの日時から買えます。Single Pass（⚡）は日付に関係なく最初に買い、Multi Pass は下の順番（取りにくい日から）で予約します。上の「予約の段取り」と同じ順番です。
       </p>
       <ol>
         {ordered.map(({ d, multi, extra, single }) => (

@@ -38,3 +38,21 @@ describe("予約の段取り（いつ・何を・どの順番で）", () => {
     expect(daysUntil(at, new Date("2027-03-02T00:00:00Z"))).toBe(0);
   });
 });
+
+describe("E06: 時短パスの順番は1つの基準（Single Pass が先、Multi Pass は取りにくい日から）", async () => {
+  const { llDayDifficulty } = await import("./reservations");
+  it("★の多い日の Multi Pass を、日付が後でも先にする", () => {
+    const p: Plan = {
+      updatedBy: null,
+      updatedAt: null,
+      days: [
+        { date: "2027-05-01", morningPark: "EP", eveningPark: "EP", items: [it_("test-track", "am", "multi")] },
+        { date: "2027-05-02", morningPark: "MK", eveningPark: "MK", items: [it_("seven-dwarfs", "am", "multi"), it_("space-mountain", "pm", "multi")] },
+      ],
+    };
+    const ll = bookingSteps(p, rideById).find((s) => s.id === "ll")!;
+    const multiDates = ll.tasks.filter((t) => t.kind === "multi").map((t) => t.id.split(":")[1]);
+    expect(multiDates).toEqual(["2027-05-02", "2027-05-01"]);
+    expect(llDayDifficulty(p.days[1]!, rideById)).toBeGreaterThan(llDayDifficulty(p.days[0]!, rideById));
+  });
+});

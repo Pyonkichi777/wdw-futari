@@ -84,6 +84,19 @@ export function reservationTasks(plan: Plan, rideById: (id: string) => Ride | un
   return out.sort((a, b) => order[a.kind] - order[b.kind]);
 }
 
+/**
+ * 時短パスの日ごとの「取りにくさ」。人気グループ（★）の事前予約は2点、そのほかの事前予約・Single Pass は1点。
+ * 予約の段取りと時短パス段取り表で、同じ順番（取りにくい日から）に並べるために使う
+ */
+export function llDayDifficulty(d: Plan["days"][number], rideById: (id: string) => Ride | undefined): number {
+  return d.items.reduce((n, i) => {
+    const r = rideById(i.rideId);
+    if (i.method === "multi") return n + (r?.multiPassTier === 1 && r.park !== "AK" ? 2 : 1);
+    if (i.method === "single") return n + 1;
+    return n;
+  }, 0);
+}
+
 /** 取りにくいことで知られる店（一般的な傾向）。予約開始と同時に、ほかより先に押さえる */
 const HARD_TO_BOOK = new Set(["dine-cinderella-royal-table", "park-space-220", "park-beak-and-barrel", "dine-topolino", "dine-ohana", "park-be-our-guest", "dine-1900-park-fare", "dine-chef-mickeys"]);
 export const isHardToBook = (id: string): boolean => HARD_TO_BOOK.has(id);
@@ -126,9 +139,12 @@ export function bookingSteps(plan: Plan, rideById: (id: string) => Ride | undefi
   const hard = (t: ReservationTask): number => (isHardToBook(rideOf(t)) ? 0 : rideById(rideOf(t))?.dining?.characters ? 1 : 2);
   disneyDining.sort((a, b) => hard(a) - hard(b) || byDate(a, b));
   const hotelDining = tasks.filter((t) => t.kind === "dining" && rideById(rideOf(t))?.dining?.booking === "hotel").sort(byDate);
+  // Multi Pass は取りにくい日から（時短パス段取り表と同じ順）。同点なら日付順
+  const diff = new Map(plan.days.map((d) => [d.date, llDayDifficulty(d, rideById)]));
+  const byDifficulty = (a: ReservationTask, b: ReservationTask): number => (diff.get(dateOf(b)) ?? 0) - (diff.get(dateOf(a)) ?? 0) || byDate(a, b);
   const ll = [
     ...tasks.filter((t) => t.kind === "single").sort(byDate),
-    ...tasks.filter((t) => t.kind === "multi").sort(byDate),
+    ...tasks.filter((t) => t.kind === "multi").sort(byDifficulty),
     ...tasks.filter((t) => t.kind === "singleOptional").sort(byDate),
   ];
 
@@ -184,7 +200,7 @@ export function bookingSteps(plan: Plan, rideById: (id: string) => Ride | undefi
       at: llAt,
       tips: [
         "チェックイン7日前に、5日分すべてをまとめて買える（ホテル宿泊者の特典）",
-        "先に Single Pass（数が少なく売り切れやすい）→ 次に Multi Pass を日付順に",
+        "先に Single Pass（数が少なく売り切れやすい。日付に関係なく最初に）→ 次に Multi Pass を取りにくい日から（★人気グループの多い日が先）",
         "Multi Pass は★（人気グループ）を先に選び、残り2本を選ぶ",
       ],
       tasks: ll,
