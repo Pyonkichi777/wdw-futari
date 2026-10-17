@@ -34,6 +34,7 @@ import { clock, dayTimes, type FixedTimes } from "../lib/bookTimes";
 import type { HoursFeed } from "../lib/hours";
 import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
 import { SnapshotPanel } from "./SnapshotPanel";
+import { PlanTextPanel } from "./PlanTextPanel";
 import { CROWD_ICON, CROWD_LABEL, CROWD_SOURCE, crowdInfo, type CrowdFeed } from "../lib/crowd";
 import { applyFix, excludeAllLow, skipUnplaced } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
@@ -296,6 +297,8 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
         onDelete={onDeleteSnapshot}
         onRestore={(snap) => save(() => snap.plan)}
       />
+
+      <PlanTextPanel plan={plan} checks={checks} hours={hours} />
 
       {stale && (
         <div className="stale-bar">

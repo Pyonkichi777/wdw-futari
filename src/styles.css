@@ -2858,3 +2858,11 @@ details.about > summary {
   color: var(--muted);
   padding: 6px 0;
 }
+.text-panel summary {
+  cursor: pointer;
+}
+.text-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
