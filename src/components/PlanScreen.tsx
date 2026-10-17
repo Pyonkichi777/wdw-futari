@@ -29,8 +29,8 @@ import {
   type PlanItem,
   type Slot,
 } from "../lib/plan";
-import { checkPlan, fixAllReds } from "../lib/planChecks";
-import { clock, dayTimes } from "../lib/bookTimes";
+import { checkPlan, fixAllReds, type PlanWarning } from "../lib/planChecks";
+import { clock, dayTimes, type FixedTimes } from "../lib/bookTimes";
 import type { HoursFeed } from "../lib/hours";
 import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
 import { SnapshotPanel } from "./SnapshotPanel";
@@ -39,7 +39,7 @@ import { applyFix, excludeAllLow, skipUnplaced } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook, llDayDifficulty } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
-import type { Checks } from "../lib/checks";
+import { fixedTimesFor, type Checks } from "../lib/checks";
 import { ParkMap } from "./ParkMap";
 import { isLowPriority, isVetoed } from "../lib/priority";
 import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
@@ -57,6 +57,8 @@ interface Props {
   votes: AllVotes;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
+  /** 取れた予約の時刻を入れる（"HH:MM"、null で消す） */
+  onGotTime: (id: string, rideId: string, hm: string | null) => void;
   /** 図鑑でそのアトラクション・店を見る（anchor = 戻ってきたときに表示する場所） */
   onZukan: (rideId: string, anchor: string) => void;
   /** 混雑予想サイトから取り込んだ値（まだ無ければ null） */
@@ -87,7 +89,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onZukan, crowd, hours, snapshots, onSaveSnapshot, onDeleteSnapshot }: Props) {
+export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onGotTime, onZukan, crowd, hours, snapshots, onSaveSnapshot, onDeleteSnapshot }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -192,7 +194,15 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       save((p) => excludeAllLow(p, items, isLow, rideById, me));
     }
   };
-  const warnings = checkPlan(plan, items, rideById);
+  // 取れた予約の時刻に、前の予定から間に合わない（🔴）
+  const lateWarnings: PlanWarning[] = plan.days.flatMap((d): PlanWarning[] => {
+    const h = dayTimes(d, rideById, hours, fixedTimesFor(checks, d.date)).hints;
+    return d.items.flatMap((i) => {
+      const x = h.get(i.rideId);
+      return x?.late ? [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${rideById(i.rideId)?.nameJa ?? i.rideId}」（${clock(x.at)}）に、前の予定から間に合いません。前の予定を外すか動かしてください` }] : [];
+    });
+  });
+  const warnings = [...lateWarnings, ...checkPlan(plan, items, rideById)];
   // 優先順位・混雑予想が変わって、今の日割りがおすすめと違うとき
   const best = parkOrderFor(items, rideById, TRIP.parkDays, {
     focusParks,
@@ -222,7 +232,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
 
       <WhereNow plan={plan} onHere={setHere} />
 
-      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} votes={votes} onZukan={onZukan} hours={hours} />
+      <ReservationPanel plan={plan} checks={checks} onCheck={onCheck} onGotTime={onGotTime} votes={votes} onZukan={onZukan} hours={hours} />
 
       {leftSA.length > 0 && (
         <div className="left-sa">
@@ -486,6 +496,7 @@ function DayCard({
       <DayTimeline
         day={day}
         hours={hours}
+        fixed={fixedTimesFor(checks, day.date)}
         here={here}
         render={(it, r, minutes, time) => (
           <>
@@ -530,16 +541,18 @@ function DayCard({
 function DayTimeline({
   day,
   hours,
+  fixed,
   here,
   render,
 }: {
   day: DayPlan;
   hours: HoursFeed | null;
+  fixed: FixedTimes;
   here: ParkId | "HOTEL" | null;
   render: (it: PlanItem, r: Ride, minutes: number, time: string | undefined) => ReactNode;
 }) {
   const { segments, totalMinutes } = dayTimeline(day, rideById);
-  const times = dayTimes(day, rideById, hours);
+  const times = dayTimes(day, rideById, hours, fixed);
   const official = hours?.days[day.date]?.[day.morningPark];
   const early = day.items.some((i) => i.method === "early");
   // 「夕方から」のパークに予定がない（移動は描かず、案内だけ出す）
@@ -850,10 +863,12 @@ function ReservationPanel({
   votes,
   onZukan,
   hours,
+  onGotTime,
 }: {
   plan: Plan;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
+  onGotTime: (id: string, rideId: string, hm: string | null) => void;
   votes: AllVotes;
   onZukan: (rideId: string, anchor: string) => void;
   hours: HoursFeed | null;
@@ -927,13 +942,26 @@ function ReservationPanel({
                           <small>{t.detail}</small>
                           {t.opens && <small className="rsv-at">📆 予約する日時: {t.opens}</small>}
                           {t.pick && <small className="rsv-at">🕐 選ぶ時間枠: {t.pick}</small>}
-                          {done && (
+                          {done ? (
                             <small className="rsv-by">
-                              ✓ {done.by === "toshi" ? "Toshi" : "妻"}が対応済み（{new Date(done.at).toLocaleDateString("ja-JP")}）
+                              ✓ 取得済み（{done.by === "toshi" ? "Toshi" : "妻"}・{new Date(done.at).toLocaleDateString("ja-JP")}）
+                              {canTime(t) && !done.got && " ／ 取れた時刻を入れると作戦の時刻に反映されます"}
                             </small>
+                          ) : (
+                            t.kind !== "prep" && <small className="rsv-wish">⬜ まだ取れていません（上の時間枠は希望・おすすめ）</small>
                           )}
                         </span>
                       </label>
+                      {canTime(t) && (
+                        <div className="rsv-got">
+                          {t.rideIds.map((rid) => (
+                            <label key={rid}>
+                              <span>{t.rideIds.length > 1 ? `${rideById(rid)?.nameJa ?? rid}：` : ""}取れた時刻</span>
+                              <input type="time" value={done?.got?.[rid] ?? ""} onChange={(e) => onGotTime(t.id, rid, e.target.value || null)} />
+                            </label>
+                          ))}
+                        </div>
+                      )}
                       {t.rideIds.length > 0 && (
                         <div className="rsv-links">
                           {t.rideIds.map((id) => (
@@ -1009,6 +1037,9 @@ function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]
     </nav>
   );
 }
+
+/** 取れた時刻を入れられる予約（食事・Single Pass・Multi Pass の事前予約） */
+const canTime = (t: { kind: string; rideIds: string[] }): boolean => (t.kind === "dining" || t.kind === "single" || t.kind === "multi") && t.rideIds.length > 0;
 
 const STEP_NO = ["①", "②", "③", "④", "⑤", "⑥"];
 

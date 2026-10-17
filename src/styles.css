@@ -2793,3 +2793,26 @@ details.rank-group > summary h3 {
 .skip-left {
   margin: 4px 0 0;
 }
+.rsv-got {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 4px 0 0 32px;
+  font-size: 0.8rem;
+}
+.rsv-got label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rsv-got input {
+  font-size: 0.95rem;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+.rsv-list small.rsv-wish {
+  color: var(--warn-text);
+}

@@ -272,6 +272,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             votes={votes}
             checks={checks}
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
+            onGotTime={(id, rid, hm) => store.setGotTime(id, rid, hm, me).catch(report)}
             onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
             crowd={crowd}
             hours={hours}

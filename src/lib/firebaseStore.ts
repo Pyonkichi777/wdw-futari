@@ -197,6 +197,16 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     async setCheck(id, done, by) {
       await setDoc(doc(fb.db, "consensus", "checks"), { done: { [id]: done ? { by, at: Date.now() } : deleteField() } }, { merge: true });
     },
+    async setGotTime(id, rideId, hm, by) {
+      // 時刻を入れたら「済」にもする（まだチェックしていなければ、入れた人・日時で）
+      const ref = doc(fb.db, "consensus", "checks");
+      await runTransaction(fb.db, async (tx) => {
+        const cur = parseChecks((await tx.get(ref)).data()?.done)[id];
+        const base = cur ?? { by, at: Date.now() };
+        // merge では入れ子の項目は消えないので、消すときは deleteField
+        tx.set(ref, { done: { [id]: { by: base.by, at: base.at, got: { [rideId]: hm ?? deleteField() } } } }, { merge: true });
+      });
+    },
     subscribeBanner(cb) {
       return onSnapshot(
         doc(fb.db, "assets", "banner"),

@@ -28,6 +28,8 @@ export interface Store {
   /** 予約・購入の「済」チェック（2人で共有） */
   subscribeChecks(cb: (c: Checks) => void): Unsubscribe;
   setCheck(id: string, done: boolean, by: PersonId): Promise<void>;
+  /** 取れた予約の時刻（"HH:MM"、null で消す）。入れると「済」にもなる */
+  setGotTime(id: string, rideId: string, hm: string | null, by: PersonId): Promise<void>;
   /** 作戦の保存（2人それぞれが持つ。2人合計10件まで。新しい順） */
   subscribeSnapshots(cb: (list: PlanSnapshot[]) => void): Unsubscribe;
   /** 上限なら replaceOldestOwn のときだけ自分のいちばん古い保存と入れ替える。入れ替えられなければ Error("full") */

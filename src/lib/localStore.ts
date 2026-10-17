@@ -119,6 +119,16 @@ export function createLocalStore(): Store {
       snapListeners.forEach((l) => l(snaps));
     },
     subscribeChecks: (cb) => listen(checkListeners, cb, checks),
+    async setGotTime(id: string, rideId: string, hm: string | null, by: PersonId) {
+      const cur = checks[id];
+      const got = { ...(cur?.got ?? {}) };
+      if (hm) got[rideId] = hm;
+      else delete got[rideId];
+      const base = cur ?? { by, at: Date.now() };
+      checks = { ...checks, [id]: Object.keys(got).length > 0 ? { ...base, got } : { by: base.by, at: base.at } };
+      write(CHECKS_KEY, checks);
+      checkListeners.forEach((l) => l(checks));
+    },
     async setCheck(id: string, done: boolean, by: PersonId) {
       const next = { ...checks };
       if (done) next[id] = { by, at: Date.now() };
