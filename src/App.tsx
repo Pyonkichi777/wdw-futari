@@ -280,7 +280,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             onDeleteSnapshot={(id) => store.deleteSnapshot(id, me).catch(report)}
           />
         )}
-        {tab === "news" && <NewsScreen />}
+        {tab === "news" && <NewsScreen plan={plan} hours={hours} />}
         {tab === "consensus" && <ConsensusScreen me={me} votes={votes} meals={meals} consensus={consensus} onSave={(c) => store.saveConsensus(c).catch(report)} />}
       </main>
       <ScrollTopButton />

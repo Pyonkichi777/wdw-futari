@@ -55,3 +55,11 @@ describe("ニュース", () => {
     expect(newsForRide(r, list).map((n) => n.id)).toEqual(["in"]);
   });
 });
+
+describe("ニュースの文章に作戦の日付を書かない（作戦は変わるため。今の作戦との関係はアプリが表示する）", () => {
+  it("action に旅行中の日付（4/29〜5/7）を書かない", async () => {
+    const { readFileSync } = await import("node:fs");
+    const raw = JSON.parse(readFileSync("public/news.json", "utf-8")) as { items: { id: string; action: string }[] };
+    for (const n of raw.items) expect(n.action, n.id).not.toMatch(/(4\/(29|30)|5\/[1-7])(?!\d)/);
+  });
+});

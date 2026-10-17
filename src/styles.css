@@ -2735,3 +2735,23 @@ ol.rsv-list {
   display: flex;
   gap: 6px;
 }
+
+/* ニュース: 今の作戦との関係 */
+.news-plan {
+  list-style: none;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+.news-plan li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.news-plan .muted {
+  color: var(--muted);
+}

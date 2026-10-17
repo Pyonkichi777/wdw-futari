@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import { rideById } from "../data/rides";
 import { CATEGORY_LABEL, IMPACT_LABEL, OVERLAP_LABEL, type NewsItem } from "../lib/news";
 import { useNews } from "./NewsContext";
+import type { HoursFeed } from "../lib/hours";
+import type { Plan } from "../lib/plan";
+import { placeText, placesInPlan } from "../lib/planLookup";
+import { optimizePlan } from "../lib/route";
 
 /** 旅行の計画に影響する最新ニュース（毎朝の自動巡回で更新） */
-export function NewsScreen() {
+export function NewsScreen({ plan: stored, hours }: { plan: Plan; hours: HoursFeed | null }) {
+  // 作戦タブと同じ並び・時刻で見る（ニュースの文章には日付を書かず、ここで今の作戦と結びつける）
+  const plan = optimizePlan(stored);
   const { feed, error, reload, seen, markAllSeen } = useNews();
   const [hideOutside, setHideOutside] = useState(true);
   // 開いた時点で未読だったもの（「NEW」の印に使う）。表示したら既読にしてバッジを消す
@@ -21,8 +27,8 @@ export function NewsScreen() {
     <section>
       <h2>旅のニュース</h2>
       <p className="note">
-        ゴンドラ・アトラクションの運休、パレードの変更など、計画に影響するニュースを毎朝自動で集めています。
-        {feed?.updatedAt && `最終更新: ${new Date(feed.updatedAt).toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" })}`}
+        ゴンドラ・アトラクションの運休、パレードの変更など、計画に影響するニュースを毎朝6:48に自動で確認しています（新しいニュースがない日は、この一覧は変わりません）。
+        {feed?.updatedAt && `ニュースを最後に追加・更新した日: ${new Date(feed.updatedAt).toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" })}`}
       </p>
       <label className="toggle">
         <input type="checkbox" checked={hideOutside} onChange={(e) => setHideOutside(e.target.checked)} />
@@ -37,7 +43,7 @@ export function NewsScreen() {
       {!feed && !error && <p className="empty">読み込み中…</p>}
       <div className="list">
         {items.map((n) => (
-          <NewsCard key={n.id} n={n} isNew={fresh?.has(n.id) ?? false} />
+          <NewsCard key={n.id} n={n} isNew={fresh?.has(n.id) ?? false} plan={plan} hours={hours} />
         ))}
         {feed && items.length === 0 && <p className="empty">いまのところ、旅行に影響するニュースはありません。</p>}
       </div>
@@ -45,7 +51,7 @@ export function NewsScreen() {
   );
 }
 
-function NewsCard({ n, isNew }: { n: NewsItem; isNew: boolean }) {
+function NewsCard({ n, isNew, plan, hours }: { n: NewsItem; isNew: boolean; plan: Plan; hours: HoursFeed | null }) {
   return (
     <article className={`card news impact-${n.impact}`}>
       <div className="news-head">
@@ -62,7 +68,21 @@ function NewsCard({ n, isNew }: { n: NewsItem; isNew: boolean }) {
       <p className="desc">{n.summary}</p>
       {n.action && <p className="news-action">👉 {n.action}</p>}
       {n.rideIds.length > 0 && (
-        <p className="sub">関係するアトラクション: {n.rideIds.map((id) => rideById(id)?.nameJa ?? id).join("、")}</p>
+        <ul className="news-plan">
+          {n.rideIds.map((id) => {
+            const places = placesInPlan(plan, id, rideById, hours);
+            return (
+              <li key={id}>
+                <strong>{rideById(id)?.nameJa ?? id}</strong>
+                {places.length > 0 ? (
+                  <span>📅 今の作戦: {places.map(placeText).join(" ／ ")}</span>
+                ) : (
+                  <span className="muted">今の作戦には入っていません（今の予定への直接の影響なし）</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
       <div className="ride-links">
         {n.sources.map((s) => (
