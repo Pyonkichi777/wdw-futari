@@ -19,7 +19,10 @@ const h = timeHints(day, rideById);
 
 describe("予約で選ぶ時間枠のおすすめ", () => {
   it("開園前入園の日は8:30から数えて、時短パスは1時間の枠", () => {
-    expect(h.get("tron")?.text).toMatch(/^(8|9):(00|30)〜(9|10):(00|30)の枠$/);
+    expect(h.get("tron")?.text).toMatch(/^\d+:\d{2}頃（予約する枠 (8|9):(00|30)〜(9|10):(00|30)）$/);
+    const w = h.get("tron")!.window!;
+    expect(h.get("tron")!.at).toBeGreaterThanOrEqual(w.from);
+    expect(h.get("tron")!.at).toBeLessThan(w.to);
     expect(h.get("space-mountain")!.at).toBeGreaterThan(h.get("tron")!.at);
   });
   it("昼食は11:30〜13:30、夕食は17:30〜19:00の間", () => {
@@ -78,5 +81,41 @@ describe("改善提案 E02・E05", () => {
     const t = dayTimes(d, rideById);
     expect(t.lateStart).toBe(true);
     expect(t.start).toBe(17 * 60 + 30);
+  });
+});
+
+describe("改善提案v2 I02・N01・I05", () => {
+  const day: DayPlan = {
+    date: "2027-05-04",
+    morningPark: "AK",
+    eveningPark: "AK",
+    items: [
+      { rideId: "dine-tusker-house", slot: "lunch", method: "meal" },
+      { rideId: "lion-king", slot: "pm", method: "show" },
+      { rideId: "kilimanjaro", slot: "pm", method: "multi" },
+      { rideId: "zootopia", slot: "pm", method: "show" },
+    ],
+  };
+  it("I02: 上から順に読んで、次の予定は前の予定の終わり（開始＋所要時間）より前にならない", async () => {
+    const { dayTimeline } = await import("./timing");
+    const t = dayTimes(day, rideById);
+    const segs = dayTimeline(day, rideById).segments.flatMap((s) => (s.type === "item" ? [s] : []));
+    for (let i = 1; i < segs.length; i++) {
+      const prev = t.hints.get(segs[i - 1]!.ride.id)!;
+      const cur = t.hints.get(segs[i]!.ride.id)!;
+      expect(cur.at, segs[i]!.ride.id).toBeGreaterThanOrEqual(prev.at + segs[i - 1]!.minutes);
+    }
+  });
+  it("N01: ショー・パレードの時刻は仮置きと表示", () => {
+    const h = timeHints(day, rideById);
+    expect(h.get("lion-king")?.tentative).toBe(true);
+    expect(h.get("lion-king")?.text).toContain("仮置き");
+  });
+  it("I05: 取れた予約の時刻に合わせ、前の予定から間に合わなければ知らせる", () => {
+    const h = timeHints(day, rideById, null, new Map([["kilimanjaro", 12 * 60]]));
+    expect(h.get("kilimanjaro")).toMatchObject({ at: 12 * 60, fixed: true, late: true });
+    const ok = timeHints(day, rideById, null, new Map([["kilimanjaro", 16 * 60]]));
+    expect(ok.get("kilimanjaro")?.late).toBeUndefined();
+    expect(ok.get("zootopia")!.at).toBeGreaterThanOrEqual(16 * 60);
   });
 });
