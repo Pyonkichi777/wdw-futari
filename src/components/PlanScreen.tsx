@@ -565,7 +565,7 @@ function DayTimeline({
     <>
       {day.items.length > 0 && (
         <p className={totalMinutes > DAY_LIMIT_MINUTES ? "plan-total over" : "plan-total"}>
-          ⏱ 予定の時間（乗り物・食事・ショー・移動の合計）{hoursText(totalMinutes)}
+          ⏱ 予定の時間（パーク着から、乗り物・食事・ショー・移動の合計）{hoursText(times.busy)}
           {totalMinutes > DAY_LIMIT_MINUTES && " ・詰め込みすぎかも"}
           <br />
           🕗 パーク着〜ホテル着 {hoursText(Math.max(0, times.end - times.start))}
