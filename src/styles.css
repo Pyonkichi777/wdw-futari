@@ -2755,3 +2755,12 @@ ol.rsv-list {
 .news-plan .muted {
   color: var(--muted);
 }
+details.rank-group > summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+details.rank-group > summary h3 {
+  margin: 0;
+}

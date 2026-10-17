@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { parkName } from "../data/parks";
 import { RIDES, rideById } from "../data/rides";
 import {
@@ -22,7 +23,7 @@ import { diningPlace } from "../lib/dining";
 import { suggestMeal, type AllMeals } from "../lib/meals";
 import { mealText } from "./MealPicker";
 import { PERSON_LABEL } from "../lib/store";
-import type { Consensus, ConsensusItem, PersonId, Rank, Ride } from "../types";
+import type { Consensus, ConsensusItem, ParkId, PersonId, Rank, Ride } from "../types";
 
 interface Props {
   me: PersonId;
@@ -40,6 +41,9 @@ const RANK_INFO: Record<Rank, { title: string; hint: string }> = {
 
 /** A3 合意リスト（優先順位）。2人とも投票し終えると作れる */
 export function ConsensusScreen({ me, votes, meals, consensus, onSave }: Props) {
+  // B（件数が多い）の折りたたみとパークの絞り込み
+  const [bOpen, setBOpen] = useState(false);
+  const [bPark, setBPark] = useState<"ALL" | ParkId>("ALL");
   const ready = isComplete(votes.toshi, RIDES) && isComplete(votes.tsuma, RIDES);
   if (!ready) {
     return (
@@ -106,13 +110,26 @@ export function ConsensusScreen({ me, votes, meals, consensus, onSave }: Props) 
 
           {(["S", "A", "B"] as const).map((rank) => {
             const group = items.filter((it) => it.rank === rank);
-            return (
-              <div key={rank} className={`rank-group rank-${rank}`}>
-                <h3>{RANK_INFO[rank].title}</h3>
+            // B は件数が多いので、折りたたんでパーク別に見られるようにする（並び替えはパークで絞っていないときだけ）
+            const isB = rank === "B";
+            const shown = isB && bPark !== "ALL" ? group.filter((it) => rideById(it.rideId)?.park === bPark) : group;
+            const body = (
+              <>
                 <p className="note">{RANK_INFO[rank].hint}</p>
+                {isB && group.length > 0 && (
+                  <div className="chips wrap" role="group" aria-label="Bをパークで絞り込む">
+                    {(["ALL", "MK", "EP", "HS", "AK"] as const).map((p) => (
+                      <button key={p} aria-pressed={bPark === p} className={bPark === p ? "chip on" : "chip"} onClick={() => setBPark(p)}>
+                        {p === "ALL" ? "すべて" : parkName(p)}
+                        <span className="vs-num">{p === "ALL" ? group.length : group.filter((it) => rideById(it.rideId)?.park === p).length}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {group.length === 0 && <p className="empty">なし</p>}
                 <ol>
-                  {group.map((it, idx) => {
+                  {shown.map((it) => {
+                    const idx = group.indexOf(it);
                     const ride = rideById(it.rideId);
                     if (!ride) return null;
                     const c = byId.get(it.rideId);
@@ -152,6 +169,22 @@ export function ConsensusScreen({ me, votes, meals, consensus, onSave }: Props) 
                     );
                   })}
                 </ol>
+              </>
+            );
+            return isB ? (
+              <details key={rank} className={`rank-group rank-${rank}`} open={bOpen} onToggle={(e) => setBOpen(e.currentTarget.open)}>
+                <summary>
+                  <h3>
+                    {RANK_INFO[rank].title}（{group.length}件）
+                  </h3>
+                  <span className="note">{bOpen ? "押すと閉じます" : "押すと開きます。パーク別に見られます"}</span>
+                </summary>
+                {body}
+              </details>
+            ) : (
+              <div key={rank} className={`rank-group rank-${rank}`}>
+                <h3>{RANK_INFO[rank].title}</h3>
+                {body}
               </div>
             );
           })}
