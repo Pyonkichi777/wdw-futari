@@ -14,7 +14,7 @@ export function MealPicker({ ride, value, onChange }: Props) {
   if (meals.length === 0) return null;
   const only = meals[0];
   if (meals.length === 1 && only !== undefined) {
-    return <p className="meal-pick only">🍽 この店でキャラクターに会えるのは{MEAL_LABEL[only]}だけ</p>;
+    return <p className="meal-pick only">{onlyMealText(ride, only)}</p>;
   }
   return (
     <div className="meal-pick">
@@ -37,3 +37,7 @@ export function MealPicker({ ride, value, onChange }: Props) {
 /** 選んだ時間帯の表示（相手の回答・合意リスト用） */
 export const mealText = (meals: readonly MealPeriod[] | undefined): string =>
   meals && meals.length > 0 ? meals.map((m) => MEAL_LABEL[m]).join("・") : "時間帯の希望なし";
+
+/** 1つの時間帯しか選べない店の説明。キャラクターが出る店と出ない店で言い方を分ける（出ない店を「会える」と言わない） */
+export const onlyMealText = (ride: Ride, meal: MealPeriod): string =>
+  ride.dining?.characters ? `🍽 この店でキャラクターに会えるのは${MEAL_LABEL[meal]}だけ` : `🍽 ${MEAL_LABEL[meal]}だけの店（キャラクターは出ません）`;
