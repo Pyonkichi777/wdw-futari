@@ -16,6 +16,7 @@ interface Props {
 
 /** 図鑑・投票で共通の絞り込み（検索・パーク・種類・条件・あなたの回答） */
 export function ListFilterBar({ filters, onChange, base, myVotes }: Props) {
+  const detailCount = (filters.kind !== EMPTY_FILTERS.kind ? 1 : 0) + filters.features.length + filters.statuses.length;
   return (
     <>
       <div className="search-box" role="search">
@@ -37,9 +38,15 @@ export function ListFilterBar({ filters, onChange, base, myVotes }: Props) {
         )}
       </div>
       <ParkFilter value={filters.park} onChange={(park) => onChange({ park })} />
-      <KindFilter value={filters.kind} onChange={(kind) => onChange({ kind })} />
-      <FeatureFilter value={new Set(filters.features)} onChange={(s) => onChange({ features: [...s] })} />
-      <VoteStatusFilter value={new Set(filters.statuses)} onChange={(s) => onChange({ statuses: [...s] })} counts={countByStatus(myVotes, base)} />
+      {/* くわしい条件は折りたたむ（使っている条件があれば開いておく） */}
+      <details className="more-filters" open={detailCount > 0}>
+        <summary>
+          くわしい条件（種類・条件・あなたの回答）{detailCount > 0 && <span className="vs-num">{detailCount}</span>}
+        </summary>
+        <KindFilter value={filters.kind} onChange={(kind) => onChange({ kind })} />
+        <FeatureFilter value={new Set(filters.features)} onChange={(s) => onChange({ features: [...s] })} />
+        <VoteStatusFilter value={new Set(filters.statuses)} onChange={(s) => onChange({ statuses: [...s] })} counts={countByStatus(myVotes, base)} />
+      </details>
       {isFiltered(filters) && (
         <button className="chip clear all-clear" onClick={() => onChange(EMPTY_FILTERS)}>
           絞り込みをすべて解除

@@ -171,6 +171,16 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   const [snapshots, setSnapshots] = useState<PlanSnapshot[]>([]);
   useEffect(() => store.subscribeSnapshots(setSnapshots), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
+  // 上の写真の帯は、2回目に開いたときから小さく（写真は残す。押せば大きくできる。端末ごとに覚える）
+  const [compact, setCompactState] = useState<boolean>(() => readCompact());
+  const setCompact = (v: boolean): void => {
+    setCompactState(v);
+    try {
+      localStorage.setItem(COMPACT_KEY, v ? "1" : "0");
+    } catch {
+      // 保存できない環境では、その場だけ切り替える
+    }
+  };
   useEffect(() => store.subscribeBanner(setPhoto), [store]);
 
   const report = (e: unknown): void => setError(authErrorMessage(e));
@@ -221,7 +231,7 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   return (
     <div className="app">
       <header
-        className={photo ? "top sky has-photo" : "top sky"}
+        className={`${photo ? "top sky has-photo" : "top sky"}${compact ? " compact" : ""}`}
         style={photo ? { backgroundImage: `linear-gradient(160deg, rgba(20, 12, 50, 0.85) 0%, rgba(20, 12, 50, 0.55) 40%, rgba(20, 12, 50, 0.1) 72%), url(${photo})` } : undefined}
       >
         <div className="top-text">
@@ -233,7 +243,10 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
           {switchLabel}
         </button>
         {!photo && <Skyline />}
-        <BannerButton hasPhoto={photo !== null} onSave={(d) => store.saveBanner(d).catch(report)} />
+        {!compact && <BannerButton hasPhoto={photo !== null} onSave={(d) => store.saveBanner(d).catch(report)} />}
+        <button className="compact-toggle" onClick={() => setCompact(!compact)} aria-pressed={compact}>
+          {compact ? "▼ 写真を大きく" : "▲ 小さく"}
+        </button>
       </header>
       <TripBox />
       {banner && <p className="banner demo">{banner}</p>}
@@ -369,4 +382,19 @@ function Splash({ text }: { text: string }) {
       <p className="lead">{text}</p>
     </main>
   );
+}
+
+const COMPACT_KEY = "wdw-futari:header-compact";
+/** 初めて開いたときは大きく、2回目からは小さく（自分で切り替えたらそれを覚える） */
+function readCompact(): boolean {
+  try {
+    const v = localStorage.getItem(COMPACT_KEY);
+    if (v === null) {
+      localStorage.setItem(COMPACT_KEY, "1");
+      return false;
+    }
+    return v === "1";
+  } catch {
+    return false;
+  }
 }

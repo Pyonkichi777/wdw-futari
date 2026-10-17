@@ -2816,3 +2816,45 @@ details.rank-group > summary h3 {
 .rsv-list small.rsv-wish {
   color: var(--warn-text);
 }
+
+/* 上の帯を小さく（2回目から） */
+.top.sky.compact {
+  padding: calc(8px + env(safe-area-inset-top)) 16px 10px;
+  min-height: 0;
+  border-radius: 0 0 18px 18px;
+}
+.top.sky.compact .skyline,
+.top.sky.compact .countdown + * ,
+.top.sky.compact .title-sub {
+  display: none;
+}
+.top.sky.compact h1 {
+  font-size: 1rem;
+}
+.top.sky.compact .countdown {
+  font-size: 0.8rem;
+}
+.compact-toggle {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  z-index: 2;
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.top.sky.compact .compact-toggle {
+  position: static;
+  align-self: center;
+}
+.more-filters > summary,
+details.about > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 6px 0;
+}
