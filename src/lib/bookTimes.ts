@@ -10,6 +10,7 @@ import { toMinutes, type HoursFeed } from "./hours";
  * - 次の予定は、いつも前の予定が終わって移動した後から（上から順に読んで重ならない）
  * - 時短パスは「体験を始める目安」と、その時刻が入る1時間の「予約する枠（到着枠）」を分けて示す
  * - ショー・パレード・夜のショーの時刻は仮置き（夜のショーは 20:30 頃から、場所取りを含む）
+ * - 時短パスを予約枠の最後の時刻に乗った場合（最遅）でも、次の予約枠・食事・ショーに間に合うように選ぶ
  * - 2人が「取れた予約の時刻」を入れたら、その時刻に合わせる（前の予定から間に合わなければ知らせる）
  * 開園時間は2027年5月分が出たら確かめ直す
  */
@@ -30,6 +31,8 @@ export interface TimeHint {
   fixed?: boolean;
   /** 取れた予約の時刻に、前の予定から間に合わない */
   late?: boolean;
+  /** 取れた予約の時刻に、前の時短パスを予約枠の最後に乗った場合（最遅）は間に合わない */
+  worstLate?: boolean;
   /** 上演時刻はまだ仮置き（公式の時刻を取り込めていない） */
   tentative?: boolean;
 }
@@ -78,19 +81,23 @@ export function dayTimes(
   // 「○○頃」は実際より早く見せない（前の予定が終わる前の時刻を出さない）ように切り上げる
   const ceil10 = (m: number): number => Math.ceil(m / 10) * 10;
   // 次の予定は、いつも「前の予定が終わって移動した後」から始める（画面の時刻を上から順に読んでも重ならない）
+  // tw = 最遅の時刻: 時短パスに予約枠の最後の時刻で乗った場合（そこから所要時間・お土産・移動・余裕・休憩を足していく）。
+  // 次の時短パスの予約枠・食事・ショーは、この最遅の時刻でも間に合うように選ぶ
+  let tw = t;
   for (const seg of segments) {
     if (seg.type === "gap") {
-      // 歩く時間・余裕・トイレ休憩
+      // お土産・歩く時間・余裕・トイレ休憩
       const m = gapMinutes(seg.gap);
       t += m;
+      tw += m;
       busy += m;
       continue;
     }
     if (seg.type === "travel") {
-      // 最初の移動はホテルからの朝の移動（開園時刻に着くように出る）
-      // パーク着より前（ホテルからの朝の移動）は、パーク着〜ホテル着の中に入らない
+      // 最初の移動はホテルからの朝の移動（開園時刻に着くように出る）。パーク着より前は、パーク着〜ホテル着の中に入らない
       if (arrived) {
         t += seg.leg.minutes;
+        tw += seg.leg.minutes;
         busy += seg.leg.minutes;
       }
       continue;
@@ -101,10 +108,12 @@ export function dayTimes(
     busy += minutes;
     const got = fixed?.get(ride.id);
     if (got !== undefined) {
-      // 取れた予約の時刻に合わせる（前の予定が終わらないなら「間に合わない」）
+      // 取れた予約の時刻に合わせる（前の予定が終わらないなら「間に合わない」、最遅の場合だけ間に合わないなら「最遅だと遅れる」）
       const late = !first && got < t;
-      out.set(ride.id, { at: got, text: `${clock(got)}（取れた予約）`, fixed: true, ...(late ? { late: true } : {}) });
+      const worstLate = !first && !late && got < tw;
+      out.set(ride.id, { at: got, text: `${clock(got)}（取れた予約）`, fixed: true, ...(late ? { late: true } : {}), ...(worstLate ? { worstLate: true } : {}) });
       t = Math.max(t, got) + minutes;
+      tw = Math.max(tw, got) + minutes;
       continue;
     }
     if (item.method === "meal") {
@@ -117,28 +126,35 @@ export function dayTimes(
               first
               ? 8 * 60
               : ceil30(t);
-      // 混む時間を避けた枠（13:30・19:00）より遅くなったら、実際に着ける時刻のまま出す
-      const at = first ? want : Math.max(want, ceil10(t));
+      // 予約の時刻は、最遅の場合でも間に合う時刻に（混む時間を避けた枠より遅くなったら、実際に着ける時刻のまま）
+      const at = first ? want : Math.max(want, ceil10(t), ceil10(tw));
       out.set(ride.id, { at, text: `${clock(at)}頃` });
       t = at + minutes;
+      tw = at + minutes;
       continue;
     }
     if (ride.kind === "night" || ride.kind === "parade" || ride.kind === "show") {
-      // 上演時刻はまだ公式のものを取り込めていないので、仮置き（夜のショーは暗くなってから 20:30 頃）
-      const at = ride.kind === "night" ? Math.max(ceil30(t), 20 * 60 + 30) : ceil10(t);
+      // 上演時刻はまだ公式のものを取り込めていないので、仮置き（夜のショーは暗くなってから 20:30 頃）。最遅の場合でも間に合う回に
+      const at = ride.kind === "night" ? Math.max(ceil30(t), 20 * 60 + 30, ceil30(tw)) : Math.max(ceil10(t), ceil10(tw));
       out.set(ride.id, { at, text: `${clock(at)}頃（上演時刻は仮置き。当日アプリで確認）`, tentative: true });
       t = at + minutes;
+      tw = at + minutes;
       continue;
     }
-    const at = ceil10(t);
+    const best = ceil10(t);
     if (item.method === "multi" || item.method === "multiExtra" || item.method === "single") {
-      // 予約するのは「到着枠」。体験を始める目安がその枠に入るように選ぶ
-      const from = Math.floor(at / 30) * 30;
+      // 予約するのは「到着枠」（1時間）。体験を始める目安と、最遅の到着（前の時短パスを枠の最後に乗った場合）の両方が入る枠を選ぶ
+      const from = Math.max(Math.floor(best / 30) * 30, Math.ceil((tw - 60) / 30) * 30);
+      const at = Math.max(best, from);
       out.set(ride.id, { at, text: `${clock(at)}頃（予約する枠 ${clock(from)}〜${clock(from + 60)}）`, window: { from, to: from + 60 } });
+      t = at + minutes;
+      // 最遅: この枠の最後の時刻に乗った場合
+      tw = Math.max(tw, from + 60) + minutes;
     } else {
-      out.set(ride.id, { at, text: `${clock(at)}頃` });
+      out.set(ride.id, { at: best, text: `${clock(best)}頃` });
+      t = best + minutes;
+      tw = Math.max(tw, best) + minutes;
     }
-    t = at + minutes;
   }
   return { start, end: t, busy, idle: Math.max(0, t - start - busy), hints: out, official: h !== undefined, lateStart };
 }

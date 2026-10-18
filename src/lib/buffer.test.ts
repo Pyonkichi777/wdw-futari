@@ -80,3 +80,48 @@ describe("お土産を見る時間（5〜30分、プルダウン）", async () =
     expect(setShop(plan, d.date, target.rideId, 7).days.find((x) => x.date === d.date)!.items.find((i) => i.rideId === target.rideId)?.shop).toBeUndefined();
   });
 });
+
+describe("時短パスを予約枠の最後の時刻に乗っても（最遅）、次の予約枠・食事・ショーに間に合う", () => {
+  it("全日・全区間で、最遅の到着が次の期限（予約枠の終わり・食事やショーの時刻）を超えない", () => {
+    let checked = 0;
+    for (const d of plan.days) {
+      const t = dayTimes(d, rideById);
+      let tw: number | null = null;
+      for (const s of dayTimeline(d, rideById).segments) {
+        if (s.type === "gap") {
+          if (tw !== null) tw += s.gap.shop + s.gap.walk + s.gap.buffer + s.gap.rest;
+          continue;
+        }
+        if (s.type === "travel") {
+          if (tw !== null) tw += s.leg.minutes;
+          continue;
+        }
+        const h = t.hints.get(s.ride.id)!;
+        if (tw !== null && (h.window || s.item.method === "meal" || h.tentative)) {
+          expect(tw, `${d.date} ${s.ride.id}`).toBeLessThanOrEqual(h.window ? h.window.to : h.at);
+          checked++;
+        }
+        if (tw !== null) tw = Math.max(tw, h.at) + s.minutes;
+        if (h.window) tw = h.window.to + s.minutes;
+      }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+  it("お土産を足しても、最遅で間に合う", async () => {
+    const { setShop } = await import("./plan");
+    let p = plan;
+    for (const d of plan.days) for (const i of d.items) p = setShop(p, d.date, i.rideId, 15);
+    for (const d of p.days) {
+      const t = dayTimes(d, rideById);
+      let tw: number | null = null;
+      for (const s of dayTimeline(d, rideById).segments) {
+        if (s.type === "gap") { if (tw !== null) tw += s.gap.shop + s.gap.walk + s.gap.buffer + s.gap.rest; continue; }
+        if (s.type === "travel") { if (tw !== null) tw += s.leg.minutes; continue; }
+        const h = t.hints.get(s.ride.id)!;
+        if (tw !== null && h.window) expect(tw, `${d.date} ${s.ride.id}`).toBeLessThanOrEqual(h.window.to);
+        if (tw !== null) tw = Math.max(tw, h.at) + s.minutes;
+        if (h.window) tw = h.window.to + s.minutes;
+      }
+    }
+  });
+});

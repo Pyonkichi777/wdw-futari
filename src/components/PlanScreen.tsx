@@ -200,9 +200,12 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   // 取れた予約の時刻に、前の予定から間に合わない（🔴）
   const lateWarnings: PlanWarning[] = plan.days.flatMap((d): PlanWarning[] => {
     const h = dayTimes(d, rideById, hours, fixedTimesFor(checks, d.date)).hints;
-    const late = d.items.flatMap((i) => {
+    const late = d.items.flatMap((i): PlanWarning[] => {
       const x = h.get(i.rideId);
-      return x?.late ? [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${rideById(i.rideId)?.nameJa ?? i.rideId}」（${clock(x.at)}）に、前の予定から間に合いません（移動・余裕・トイレ休憩を含めて計算）。前の予定を外すか動かしてください` }] : [];
+      const name = rideById(i.rideId)?.nameJa ?? i.rideId;
+      if (x?.late) return [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${clock(x.at)}）に、前の予定から間に合いません（移動・余裕・トイレ休憩を含めて計算）。前の予定を外すか動かしてください` }];
+      if (x?.worstLate) return [{ level: "yellow" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${clock(x.at)}）は、前の時短パスに予約枠の最後の時刻で乗ると間に合いません。前の時短パスは枠の早めに乗る` }];
+      return [];
     });
     // 公式の営業時間が出ていれば、閉園を過ぎる予定を知らせる
     const closing = d.items.flatMap((i): PlanWarning[] => {
@@ -606,7 +609,7 @@ function DayTimeline({
           {official
             ? `公式の営業時間 ${official.early ? `開園前入園 ${official.early}・` : ""}開園 ${official.open}〜閉園 ${official.close}（${hours?.fetchedAt}取得）で計算。`
             : "公式の営業時間がまだ出ていないため、開園9:00（開園前入園8:30）と仮定。"}
-          予約の「選ぶ時間枠」と同じ計算です
+          予約の「選ぶ時間枠」と同じ計算です。時短パスは、予約枠の最後の時刻に乗っても次の予約・食事・ショーに間に合う枠を選んでいます
         </small>
       </p>
       {eveningIdle && (

@@ -134,3 +134,23 @@ describe("改善提案v2 N02・N04", async () => {
     expect(segs.some((s) => s.type === "travel" && s.to === "EP")).toBe(false);
   });
 });
+
+describe("取れた予約: 最遅だと間に合わない場合", () => {
+  it("前の時短パスを枠の最後に乗ると間に合わないときは worstLate", () => {
+    const d: DayPlan = {
+      date: "2027-05-04",
+      morningPark: "MK",
+      eveningPark: "MK",
+      items: [
+        { rideId: "seven-dwarfs", slot: "am", method: "multi" },
+        { rideId: "peter-pan", slot: "am", method: "standby" },
+      ],
+    };
+    const first = timeHints(d, rideById).get("seven-dwarfs")!;
+    // 最初の時短パスの枠の終わりより少し前に、次の予約が取れた
+    const got = first.window!.to;
+    const h = timeHints(d, rideById, null, new Map([["peter-pan", got]]));
+    expect(h.get("peter-pan")?.late).toBeUndefined();
+    expect(h.get("peter-pan")?.worstLate).toBe(true);
+  });
+});
