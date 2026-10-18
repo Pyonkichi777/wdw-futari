@@ -1,6 +1,6 @@
 import type { Ride } from "../types";
 import type { DayPlan } from "./plan";
-import { dayTimeline } from "./timing";
+import { dayTimeline, gapMinutes } from "./timing";
 import { toMinutes, type HoursFeed } from "./hours";
 
 /**
@@ -79,6 +79,13 @@ export function dayTimes(
   const ceil10 = (m: number): number => Math.ceil(m / 10) * 10;
   // 次の予定は、いつも「前の予定が終わって移動した後」から始める（画面の時刻を上から順に読んでも重ならない）
   for (const seg of segments) {
+    if (seg.type === "gap") {
+      // 歩く時間・余裕・トイレ休憩
+      const m = gapMinutes(seg.gap);
+      t += m;
+      busy += m;
+      continue;
+    }
     if (seg.type === "travel") {
       // 最初の移動はホテルからの朝の移動（開園時刻に着くように出る）
       // パーク着より前（ホテルからの朝の移動）は、パーク着〜ホテル着の中に入らない

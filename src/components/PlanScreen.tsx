@@ -31,7 +31,7 @@ import {
 } from "../lib/plan";
 import { checkPlan, fixAllReds, type PlanWarning } from "../lib/planChecks";
 import { clock, dayTimes, type FixedTimes } from "../lib/bookTimes";
-import type { HoursFeed } from "../lib/hours";
+import { toMinutes, type HoursFeed } from "../lib/hours";
 import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
 import { SnapshotPanel } from "./SnapshotPanel";
 import { PlanTextPanel } from "./PlanTextPanel";
@@ -198,10 +198,20 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   // 取れた予約の時刻に、前の予定から間に合わない（🔴）
   const lateWarnings: PlanWarning[] = plan.days.flatMap((d): PlanWarning[] => {
     const h = dayTimes(d, rideById, hours, fixedTimesFor(checks, d.date)).hints;
-    return d.items.flatMap((i) => {
+    const late = d.items.flatMap((i) => {
       const x = h.get(i.rideId);
-      return x?.late ? [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${rideById(i.rideId)?.nameJa ?? i.rideId}」（${clock(x.at)}）に、前の予定から間に合いません。前の予定を外すか動かしてください` }] : [];
+      return x?.late ? [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${rideById(i.rideId)?.nameJa ?? i.rideId}」（${clock(x.at)}）に、前の予定から間に合いません（移動・余裕・トイレ休憩を含めて計算）。前の予定を外すか動かしてください` }] : [];
     });
+    // 公式の営業時間が出ていれば、閉園を過ぎる予定を知らせる
+    const closing = d.items.flatMap((i): PlanWarning[] => {
+      const r = rideById(i.rideId);
+      const x = h.get(i.rideId);
+      const ph = r ? hours?.days[d.date]?.[r.park] : undefined;
+      if (!r || !x || !ph || r.dining?.inPark === false) return [];
+      const close = toMinutes(ph.extendedClose ?? ph.close);
+      return x.at >= close ? [{ level: "yellow", date: d.date, message: `${dayLabel(d.date)}: 「${r.nameJa}」（${clock(x.at)}頃）は${parkName(r.park)}の閉園（${ph.extendedClose ?? ph.close}）を過ぎます` }] : [];
+    });
+    return [...late, ...closing];
   });
   const warnings = [...lateWarnings, ...checkPlan(plan, items, rideById)];
   // 優先順位・混雑予想が変わって、今の日割りがおすすめと違うとき
@@ -590,6 +600,16 @@ function DayTimeline({
       )}
       <ul className="plan-items timeline">
         {segments.map((seg, i) => {
+          if (seg.type === "gap") {
+            const g = seg.gap;
+            return (
+              <li key={`g${i}`} className="plan-gap">
+                {g.walk > 0 && <span>🚶 歩く 約{g.walk}分</span>}
+                <span>⏳ 余裕 {g.buffer}分</span>
+                {g.rest > 0 && <span className="rest">🚻 トイレ・休憩 {g.rest}分</span>}
+              </li>
+            );
+          }
           if (seg.type === "travel") {
             const toName = seg.to === "HOTEL" ? "ホテル（ポップセンチュリー）" : parkName(seg.to);
             return (
