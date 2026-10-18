@@ -47,6 +47,7 @@ import { optimizePlan, routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook, llDayDifficulty } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
 import { fixedTimesFor, type Checks } from "../lib/checks";
+import { dayAdvice } from "../lib/dayAdvice";
 import { ParkMap } from "./ParkMap";
 import { isLowPriority, isVetoed } from "../lib/priority";
 import { NECESSITY_LABEL, necessityOf, type Necessity } from "../lib/necessity";
@@ -220,7 +221,18 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
       const close = toMinutes(ph.extendedClose ?? ph.close);
       return x.at >= close ? [{ level: "yellow", date: d.date, message: `${dayLabel(d.date)}: 「${r.nameJa}」（${clock(x.at)}頃）は${parkName(r.park)}の閉園（${ph.extendedClose ?? ph.close}）を過ぎます` }] : [];
     });
-    return [...late, ...closing];
+    // 空きすぎ（3時間以上）と、食事なし（🟡）
+    const adv = dayAdvice(d, rideById, hours, fixedTimesFor(checks, d.date));
+    const advice: PlanWarning[] = [
+      ...adv.idle.map((x): PlanWarning => ({
+        level: "yellow",
+        date: d.date,
+        message: `${dayLabel(d.date)}: ${clock(x.from)}〜${clock(x.to)} に約${hoursText(x.to - x.from).replace("約", "")}の空き時間があります。ホテル（ポップセンチュリー）で休むなら、${parkName(x.park)}から往復 約${x.hotelRoundTrip}分。食事やショーを入れてもよい`,
+      })),
+      ...(adv.noLunch ? [{ level: "yellow" as const, date: d.date, message: `${dayLabel(d.date)}: 昼の時間帯にパークにいますが、昼食が入っていません（予約なしで入れるカウンターの店も「食事」タブから選べます）` }] : []),
+      ...(adv.noDinner ? [{ level: "yellow" as const, date: d.date, message: `${dayLabel(d.date)}: 夜までパークにいますが、夕食が入っていません（夜のショーの前、17:30〜18:30ごろが目安）` }] : []),
+    ];
+    return [...late, ...closing, ...advice];
   });
   const warnings = [...lateWarnings, ...checkPlan(plan, items, rideById)];
   // 優先順位・混雑予想が変わって、今の日割りがおすすめと違うとき
