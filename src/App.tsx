@@ -1,3 +1,4 @@
+import { THEME_LABEL, nextTheme, readTheme, saveTheme, type Theme } from "./lib/theme";
 import type { PlanSnapshot } from "./lib/snapshots";
 import { fetchHoursFeed, type HoursFeed } from "./lib/hours";
 import { fetchCrowdFeed, type CrowdFeed } from "./lib/crowd";
@@ -171,6 +172,12 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   const [snapshots, setSnapshots] = useState<PlanSnapshot[]>([]);
   useEffect(() => store.subscribeSnapshots(setSnapshots), [store]);
   const [photo, setPhoto] = useState<string | null>(null);
+  // 画面の明るさ（自動／ライト／ダーク）。端末ごとに覚える
+  const [theme, setThemeState] = useState<Theme>(() => readTheme());
+  const setTheme = (t: Theme): void => {
+    saveTheme(t);
+    setThemeState(t);
+  };
   // 上の写真の帯は、2回目に開いたときから小さく（写真は残す。押せば大きくできる。端末ごとに覚える）
   const [compact, setCompactState] = useState<boolean>(() => readCompact());
   const setCompact = (v: boolean): void => {
@@ -241,6 +248,9 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
         </div>
         <button className="link" onClick={onSwitch}>
           {switchLabel}
+        </button>
+        <button className="theme-toggle" onClick={() => setTheme(nextTheme(theme))} aria-label={`画面の明るさ: ${THEME_LABEL[theme]}（押すと切り替え）`}>
+          {THEME_LABEL[theme]}
         </button>
         {!photo && <Skyline />}
         {!compact && <BannerButton hasPhoto={photo !== null} onSave={(d) => store.saveBanner(d).catch(report)} />}
