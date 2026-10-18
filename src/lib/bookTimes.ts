@@ -23,6 +23,10 @@ export const clock = (m: number): string => `${Math.floor(m / 60)}:${String(m % 
 export interface TimeHint {
   /** 体験を始める目安（分、0時から）。前の予定が終わって移動した後の時刻 */
   at: number;
+  /** その場所に着く目安（前の予定の終わり＋お土産・歩く・余裕・休憩・移動）。at より早ければ、始まるまで待つ */
+  arrive: number;
+  /** 終わる目安（at＋所要時間） */
+  end: number;
   /** 表示（例: 「11:30頃」「13:30頃（予約する枠 13:30〜14:30）」） */
   text: string;
   /** 時短パスの予約枠（到着枠）。この枠のあいだに着けばよい */
@@ -111,7 +115,7 @@ export function dayTimes(
       // 取れた予約の時刻に合わせる（前の予定が終わらないなら「間に合わない」、最遅の場合だけ間に合わないなら「最遅だと遅れる」）
       const late = !first && got < t;
       const worstLate = !first && !late && got < tw;
-      out.set(ride.id, { at: got, text: `${clock(got)}（取れた予約）`, fixed: true, ...(late ? { late: true } : {}), ...(worstLate ? { worstLate: true } : {}) });
+      out.set(ride.id, { at: got, arrive: t, end: Math.max(t, got) + minutes, text: `${clock(got)}（取れた予約）`, fixed: true, ...(late ? { late: true } : {}), ...(worstLate ? { worstLate: true } : {}) });
       t = Math.max(t, got) + minutes;
       tw = Math.max(tw, got) + minutes;
       continue;
@@ -128,7 +132,7 @@ export function dayTimes(
               : ceil30(t);
       // 予約の時刻は、最遅の場合でも間に合う時刻に（混む時間を避けた枠より遅くなったら、実際に着ける時刻のまま）
       const at = first ? want : Math.max(want, ceil10(t), ceil10(tw));
-      out.set(ride.id, { at, text: `${clock(at)}頃` });
+      out.set(ride.id, { at, arrive: t, end: at + minutes, text: `${clock(at)}頃` });
       t = at + minutes;
       tw = at + minutes;
       continue;
@@ -136,7 +140,7 @@ export function dayTimes(
     if (ride.kind === "night" || ride.kind === "parade" || ride.kind === "show") {
       // 上演時刻はまだ公式のものを取り込めていないので、仮置き（夜のショーは暗くなってから 20:30 頃）。最遅の場合でも間に合う回に
       const at = ride.kind === "night" ? Math.max(ceil30(t), 20 * 60 + 30, ceil30(tw)) : Math.max(ceil10(t), ceil10(tw));
-      out.set(ride.id, { at, text: `${clock(at)}頃（上演時刻は仮置き。当日アプリで確認）`, tentative: true });
+      out.set(ride.id, { at, arrive: t, end: at + minutes, text: `${clock(at)}頃（上演時刻は仮置き。当日アプリで確認）`, tentative: true });
       t = at + minutes;
       tw = at + minutes;
       continue;
@@ -146,12 +150,12 @@ export function dayTimes(
       // 予約するのは「到着枠」（1時間）。体験を始める目安と、最遅の到着（前の時短パスを枠の最後に乗った場合）の両方が入る枠を選ぶ
       const from = Math.max(Math.floor(best / 30) * 30, Math.ceil((tw - 60) / 30) * 30);
       const at = Math.max(best, from);
-      out.set(ride.id, { at, text: `${clock(at)}頃（予約する枠 ${clock(from)}〜${clock(from + 60)}）`, window: { from, to: from + 60 } });
+      out.set(ride.id, { at, arrive: t, end: at + minutes, text: `${clock(at)}頃（予約する枠 ${clock(from)}〜${clock(from + 60)}）`, window: { from, to: from + 60 } });
       t = at + minutes;
       // 最遅: この枠の最後の時刻に乗った場合
       tw = Math.max(tw, from + 60) + minutes;
     } else {
-      out.set(ride.id, { at: best, text: `${clock(best)}頃` });
+      out.set(ride.id, { at: best, arrive: t, end: best + minutes, text: `${clock(best)}頃` });
       t = best + minutes;
       tw = Math.max(tw, best) + minutes;
     }

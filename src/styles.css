@@ -3046,3 +3046,12 @@ details.about > summary {
   border-radius: 999px;
   z-index: 2;
 }
+.plan-time .plan-end {
+  color: var(--text);
+  font-weight: 700;
+}
+.plan-gap .arrive {
+  flex: 1 0 100%;
+  color: var(--text);
+  font-weight: 700;
+}

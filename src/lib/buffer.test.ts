@@ -153,3 +153,27 @@ describe("予定の間の余裕をプルダウンで（5〜120分）", async () 
     expect(back.days.flatMap((x) => x.items).some((i) => i.buffer !== undefined)).toBe(false);
   });
 });
+
+describe("終わる時刻と、次に着く時刻（見るだけで分かるように）", () => {
+  it("終わる＝開始＋所要時間。次に着く＝前の終わり＋お土産・歩く・余裕・休憩・移動。着く時刻は開始より遅くならない", () => {
+    for (const d of plan.days) {
+      const t = dayTimes(d, rideById);
+      let prevEnd: number | null = null;
+      let between = 0;
+      for (const s of dayTimeline(d, rideById).segments) {
+        if (s.type === "gap") between += s.gap.shop + s.gap.walk + s.gap.buffer + s.gap.rest;
+        else if (s.type === "travel") between += prevEnd === null ? 0 : s.leg.minutes;
+        else {
+          const h = t.hints.get(s.ride.id)!;
+          expect(h.end).toBe(h.at + s.minutes);
+          if (prevEnd !== null) {
+            expect(h.arrive, `${d.date} ${s.ride.id}`).toBe(prevEnd + between);
+            expect(h.arrive).toBeLessThanOrEqual(h.at);
+          }
+          prevEnd = h.end;
+          between = 0;
+        }
+      }
+    }
+  });
+});

@@ -36,7 +36,7 @@ import {
   type Slot,
 } from "../lib/plan";
 import { checkPlan, fixAllReds, type PlanWarning } from "../lib/planChecks";
-import { clock, dayTimes, type FixedTimes } from "../lib/bookTimes";
+import { clock, dayTimes, type FixedTimes, type TimeHint } from "../lib/bookTimes";
 import { toMinutes, type HoursFeed } from "../lib/hours";
 import { newSnapshotId, type PlanSnapshot } from "../lib/snapshots";
 import { SnapshotPanel } from "./SnapshotPanel";
@@ -559,14 +559,15 @@ function DayCard({
         hours={hours}
         fixed={fixedTimesFor(checks, day.date)}
         here={here}
-        render={(it, r, minutes, time) => (
+        render={(it, r, minutes, hint) => (
           <>
             <ItemRow
               ride={r}
               rank={rankOf(r.id)}
               item={it}
               minutes={minutes}
-              time={time}
+              time={hint?.text}
+              end={hint ? clock(hint.end) : undefined}
               votes={voteText(r)}
               low={isLow(r.id)}
               onQuickRemove={() => onRemove(r.id)}
@@ -631,7 +632,7 @@ function DayTimeline({
   hours: HoursFeed | null;
   fixed: FixedTimes;
   here: ParkId | "HOTEL" | null;
-  render: (it: PlanItem, r: Ride, minutes: number, time: string | undefined) => ReactNode;
+  render: (it: PlanItem, r: Ride, minutes: number, hint: TimeHint | undefined) => ReactNode;
 }) {
   const { segments, totalMinutes } = dayTimeline(day, rideById);
   const times = dayTimes(day, rideById, hours, fixed);
@@ -671,12 +672,22 @@ function DayTimeline({
         {segments.map((seg, i) => {
           if (seg.type === "gap") {
             const g = seg.gap;
+            // 次の予定に着く時刻（前の予定の終わり＋お土産・歩く・余裕・休憩）と、始まるまでの待ち
+            const nextSeg = segments.slice(i + 1).find((x) => x.type === "item");
+            const next = nextSeg && nextSeg.type === "item" ? times.hints.get(nextSeg.ride.id) : undefined;
+            const wait = next ? next.at - next.arrive : 0;
             return (
               <li key={`g${i}`} className="plan-gap">
                 {g.shop > 0 && <span className="shop">🛍 お土産 {g.shop}分</span>}
                 {g.walk > 0 && <span>🚶 歩く 約{g.walk}分</span>}
                 {g.buffer > 0 && <span>⏳ 余裕 {g.buffer}分</span>}
                 {g.rest > 0 && <span className="rest">🚻 トイレ・休憩 {g.rest}分</span>}
+                {next && nextSeg?.type === "item" && (
+                  <span className="arrive">
+                    ➡️ 次の「{nextSeg.ride.nameJa}」に {clock(next.arrive)}頃 着く
+                    {next.fixed && next.arrive > next.at ? "（取れた予約の時刻に遅れる）" : wait >= 5 ? `（始まりまで約${wait}分待ち）` : ""}
+                  </span>
+                )}
               </li>
             );
           }
@@ -701,7 +712,7 @@ function DayTimeline({
           return (
             <li key={seg.item.rideId} id={`pi-${day.date}-${seg.item.rideId}`}>
               {showSlot && <p className="plan-slot-label">{SLOT_LABEL[seg.item.slot]}</p>}
-              {render(seg.item, seg.ride, seg.minutes, times.hints.get(seg.ride.id)?.text)}
+              {render(seg.item, seg.ride, seg.minutes, times.hints.get(seg.ride.id))}
             </li>
           );
         })}
@@ -716,6 +727,7 @@ function ItemRow({
   item,
   minutes,
   time,
+  end,
   votes,
   reserved,
   low = false,
@@ -728,6 +740,8 @@ function ItemRow({
   item: PlanItem | null;
   minutes?: number;
   time?: string | undefined;
+  /** 終わる目安（例: 「10:55」） */
+  end?: string | undefined;
   votes?: string | null;
   reserved?: boolean;
   low?: boolean;
@@ -737,7 +751,12 @@ function ItemRow({
 }) {
   const row = (
     <button className={low ? "plan-item low" : "plan-item"} onClick={onClick}>
-      {time && <span className="plan-time">🕐 {time}</span>}
+      {time && (
+        <span className="plan-time">
+          🕐 {time}
+          {end && <span className="plan-end"> → 🏁 {end}頃 終わる</span>}
+        </span>
+      )}
       {low && <span className="low-tag">💤 優先度低</span>}
       {rank && <span className={`plan-rank rank-${rank}`}>{rank}</span>}
       {item?.suggested && <span className="plan-rank sug">おすすめ</span>}
