@@ -59,3 +59,24 @@ describe("各予定の間: 移動（距離から）・余裕・1時間半ごと�
     }
   });
 });
+
+describe("お土産を見る時間（5〜30分、プルダウン）", async () => {
+  const { setShop, parsePlan } = await import("./plan");
+  const d = plan.days.find((x) => x.items.length > 3)!;
+  const target = d.items[1]!;
+  it("選んだ分だけ、その予定の後に入り、次の予定の時刻が遅くなる。保存して読み直しても残る", () => {
+    const before = dayTimes(d, rideById).hints.get(d.items[2]!.rideId)!.at;
+    const p2 = setShop(plan, d.date, target.rideId, 20);
+    const d2 = p2.days.find((x) => x.date === d.date)!;
+    expect(d2.items.find((i) => i.rideId === target.rideId)?.shop).toBe(20);
+    const segs = dayTimeline(d2, rideById).segments;
+    expect(segs.some((s) => s.type === "gap" && s.gap.shop === 20)).toBe(true);
+    expect(dayTimes(d2, rideById).hints.get(d2.items[2]!.rideId)!.at).toBeGreaterThanOrEqual(before + 20 - 15);
+    expect(parsePlan(JSON.parse(JSON.stringify(p2))).days.find((x) => x.date === d.date)!.items.find((i) => i.rideId === target.rideId)?.shop).toBe(20);
+  });
+  it("「なし」で消える。5分刻み以外の値は読み捨てる", () => {
+    const p3 = setShop(setShop(plan, d.date, target.rideId, 20), d.date, target.rideId, 0);
+    expect(p3.days.find((x) => x.date === d.date)!.items.find((i) => i.rideId === target.rideId)?.shop).toBeUndefined();
+    expect(setShop(plan, d.date, target.rideId, 7).days.find((x) => x.date === d.date)!.items.find((i) => i.rideId === target.rideId)?.shop).toBeUndefined();
+  });
+});

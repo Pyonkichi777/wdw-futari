@@ -9,6 +9,8 @@ import { ITINERARY, TRIP } from "../data/trip";
 import { lightningLaneOpensJst } from "../lib/dining";
 import {
   unpinItem,
+  setShop,
+  SHOP_OPTIONS,
   METHOD_LABEL,
   SLOT_LABEL,
   SLOT_ORDER,
@@ -354,6 +356,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           onRemoveLow={() => removeLow(d.date)}
           checks={checks}
           onUnpin={(id) => save((p) => unpinItem(p, id))}
+          onShop={(id, m) => save((p) => setShop(p, d.date, id, m))}
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
@@ -443,6 +446,7 @@ function DayCard({
   onRemoveLow,
   checks,
   onUnpin,
+  onShop,
   editing,
   here,
   onEdit,
@@ -462,6 +466,7 @@ function DayCard({
   onRemoveLow: () => void;
   checks: Checks;
   onUnpin: (id: string) => void;
+  onShop: (id: string, minutes: number) => void;
   editing: string | null;
   here: ParkId | "HOTEL" | null;
   onEdit: (id: string | null) => void;
@@ -526,6 +531,17 @@ function DayCard({
               reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
+            <label className="shop-pick">
+              🛍 終わった後にお土産を見る
+              <select value={it.shop ?? 0} onChange={(e) => onShop(r.id, Number(e.target.value))} aria-label={`${r.nameJa}の後にお土産を見る時間`}>
+                <option value={0}>なし</option>
+                {SHOP_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}分
+                  </option>
+                ))}
+              </select>
+            </label>
             {editing === r.id && (
               <ItemEditor
                 ride={r}
@@ -604,8 +620,9 @@ function DayTimeline({
             const g = seg.gap;
             return (
               <li key={`g${i}`} className="plan-gap">
+                {g.shop > 0 && <span className="shop">🛍 お土産 {g.shop}分</span>}
                 {g.walk > 0 && <span>🚶 歩く 約{g.walk}分</span>}
-                <span>⏳ 余裕 {g.buffer}分</span>
+                {g.buffer > 0 && <span>⏳ 余裕 {g.buffer}分</span>}
                 {g.rest > 0 && <span className="rest">🚻 トイレ・休憩 {g.rest}分</span>}
               </li>
             );

@@ -112,8 +112,10 @@ export interface Gap {
   buffer: number;
   /** トイレ・休憩（0 か REST_MINUTES） */
   rest: number;
+  /** 前の予定の後にお土産を見る時間（2人が選んだ分） */
+  shop: number;
 }
-export const gapMinutes = (g: Gap): number => g.walk + g.buffer + g.rest;
+export const gapMinutes = (g: Gap): number => g.shop + g.walk + g.buffer + g.rest;
 
 export type Segment =
   | { type: "travel"; from: Place; to: Place; leg: Leg }
@@ -129,7 +131,7 @@ export function dayTimeline(day: DayPlan, rideById: (id: string) => Ride | undef
     if (leg) segments.push({ type: "travel", from: at, to, leg });
     at = to;
   };
-  let prev: { id: string; park: ParkId } | null = null;
+  let prev: { id: string; park: ParkId; shop: number } | null = null;
   // 食事以外で動き続けた時間（トイレ・休憩をとるか決める）
   let active = 0;
   for (const item of day.items) {
@@ -140,17 +142,20 @@ export function dayTimeline(day: DayPlan, rideById: (id: string) => Ride | undef
     go(ride.park);
     if (prev) {
       const walk = before === ride.park && prev.park === ride.park ? walkMinutes(prev.id, ride.id) : 0;
+      active += prev.shop;
       const rest = active >= REST_EVERY_MINUTES && item.method !== "meal" ? REST_MINUTES : 0;
       if (rest > 0) active = 0;
-      segments.push({ type: "gap", gap: { walk, buffer: BUFFER_MINUTES, rest } });
+      segments.push({ type: "gap", gap: { shop: prev.shop, walk, buffer: BUFFER_MINUTES, rest } });
       active += walk + BUFFER_MINUTES;
     }
     const minutes = itemMinutes(ride, item.method);
     segments.push({ type: "item", item, ride, park: ride.park, minutes });
     // 食事は座って休めるので、そこで数え直す
     active = item.method === "meal" ? 0 : active + minutes;
-    prev = { id: ride.id, park: ride.park };
+    prev = { id: ride.id, park: ride.park, shop: item.shop ?? 0 };
   }
+  // その日の最後の予定の後にお土産を見るなら、ホテルへ戻る前に
+  if (prev && prev.shop > 0) segments.push({ type: "gap", gap: { shop: prev.shop, walk: 0, buffer: 0, rest: 0 } });
   // 予定のないパークへの移動は描かない（予定のない日の往復や、予定のない「夕方から」のパークの経由を、確定した行程に見せない）
   go("HOTEL");
   const totalMinutes = segments.reduce((s, x) => s + (x.type === "travel" ? x.leg.minutes : x.type === "gap" ? gapMinutes(x.gap) : x.minutes), 0);

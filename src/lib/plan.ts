@@ -15,6 +15,8 @@ export interface PlanItem {
   suggested?: boolean;
   /** 2人が手で午前／午後を決めたもの（自動の「近い順」でも午前・午後を入れ替えない） */
   pinned?: true;
+  /** 終わった後にお土産を見る時間（分。5〜30の5分刻み） */
+  shop?: number;
 }
 
 export interface DayPlan {
@@ -358,6 +360,27 @@ export function moveItem(plan: Plan, rideId: string, to: { date: string; slot: S
   return { ...withExcluded(plan, excluded), days: days.map((d) => (d.date === to.date ? { ...d, items: sortItems([...d.items, item]) } : d)) };
 }
 
+/** お土産を見る時間として選べる分（プルダウン） */
+export const SHOP_OPTIONS = [5, 10, 15, 20, 25, 30] as const;
+const isShop = (v: unknown): v is number => typeof v === "number" && (SHOP_OPTIONS as readonly number[]).includes(v);
+
+/** その日のその予定の後に、お土産を見る時間を決める（0 で なし） */
+export const setShop = (plan: Plan, date: string, rideId: string, minutes: number): Plan => ({
+  ...plan,
+  days: plan.days.map((d) =>
+    d.date !== date
+      ? d
+      : {
+          ...d,
+          items: d.items.map((i) => {
+            if (i.rideId !== rideId) return i;
+            const { shop: _old, ...rest } = i;
+            return isShop(minutes) ? { ...rest, shop: minutes } : rest;
+          }),
+        },
+  ),
+});
+
 /** 手で決めた午前／午後の固定を外す（自動の「近い順」に任せる） */
 export const unpinItem = (plan: Plan, rideId: string): Plan => ({
   ...plan,
@@ -444,6 +467,7 @@ export function parsePlan(data: unknown): Plan {
                   method: it.method as Method,
                   ...(it.suggested === true ? { suggested: true } : {}),
                   ...(it.pinned === true ? { pinned: true as const } : {}),
+                  ...(isShop(it.shop) ? { shop: it.shop } : {}),
                 },
               ];
             })

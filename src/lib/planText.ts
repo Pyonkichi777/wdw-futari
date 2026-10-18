@@ -28,7 +28,7 @@ export function planToText(plan: Plan, checks: Checks, rideById: (id: string) =>
     const t = dayTimes(d, rideById, hours, fixedTimesFor(checks, d.date));
     for (const i of d.items) {
       const r = rideById(i.rideId);
-      lines.push(`  ${t.hints.get(i.rideId)?.text ?? ""}　${r?.nameJa ?? i.rideId}（${METHOD_LABEL[i.method]}）`);
+      lines.push(`  ${t.hints.get(i.rideId)?.text ?? ""}　${r?.nameJa ?? i.rideId}（${METHOD_LABEL[i.method]}）${i.shop ? `＋お土産${i.shop}分` : ""}`);
     }
   }
   const tasks = reservationTasks(plan, rideById).filter((x) => x.kind !== "singleOptional");

@@ -2880,3 +2880,23 @@ details.about > summary {
   color: var(--accent);
   font-weight: 700;
 }
+.shop-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 4px 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.shop-pick select {
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+.plan-gap .shop {
+  color: var(--pink);
+  font-weight: 700;
+}
