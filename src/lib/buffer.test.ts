@@ -16,7 +16,7 @@ describe("各予定の間: 移動（距離から）・余裕・1時間半ごと�
     expect(walkMinutes("frozen", "remy")).toBeGreaterThanOrEqual(18);
     expect(walkMinutes("tiana", "big-thunder")).toBe(5);
   });
-  it("全日・全区間に余裕5分。動き続けて1時間半を超える前にトイレ休憩15分が入る", () => {
+  it("全日・全区間に余裕（既定15分）。動き続けて1時間半を超える前にトイレ休憩がとれる", () => {
     for (const d of plan.days) {
       const segs = dayTimeline(d, rideById).segments;
       let active = 0;
@@ -24,11 +24,12 @@ describe("各予定の間: 移動（距離から）・余裕・1時間半ごと�
       for (const s of segs) {
         if (s.type === "gap") {
           expect(s.gap.buffer).toBe(BUFFER_MINUTES);
-          if (s.gap.rest > 0) {
-            expect(s.gap.rest).toBe(REST_MINUTES);
+          // トイレ休憩が入るか、余裕が15分以上（そこで休める）なら数え直す
+          if (s.gap.rest > 0 || s.gap.buffer >= REST_MINUTES) {
+            if (s.gap.rest > 0) expect(s.gap.rest).toBe(REST_MINUTES);
             active = 0;
           }
-          active += s.gap.walk + s.gap.buffer;
+          active += s.gap.shop + s.gap.walk + (s.gap.buffer >= REST_MINUTES ? 0 : s.gap.buffer);
           lastWasItem = false;
         } else if (s.type === "item") {
           // 予定の直前に、動き続けた時間が1時間半を大きく超えていない（食事の直前は食事で休むので除く）
@@ -148,7 +149,7 @@ describe("予定の間の余裕をプルダウンで（5〜120分）", async () 
       expect(s.gap.buffer).toBe(20);
       expect(s.gap.rest).toBe(0);
     }
-    const back = setBufferAll(all, 5);
+    const back = setBufferAll(all, 15);
     expect(back.days.flatMap((x) => x.items).some((i) => i.buffer !== undefined)).toBe(false);
   });
 });

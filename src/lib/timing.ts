@@ -22,8 +22,8 @@ const PATH_FACTOR = 1.4;
 /** 同じパークの中で次の場所へ歩く時間の最低（分）。場所の座標がないときは 10 分 */
 const WALK_MIN = 5;
 const WALK_UNKNOWN = 10;
-/** 予定と予定の間に毎回とる余裕（分）の既定。予定ごとにプルダウンで 5〜120 分に変えられる（PlanItem.buffer） */
-export const BUFFER_MINUTES = 5;
+/** 予定と予定の間に毎回とる余裕（分）の既定（Toshi指定で15分）。予定ごとにプルダウンで 5〜120 分に変えられる（PlanItem.buffer） */
+export const BUFFER_MINUTES = 15;
 /** トイレ・休憩: 食事以外でこの分数ほど動き続けたら、次の予定の前にとる */
 export const REST_EVERY_MINUTES = 90;
 export const REST_MINUTES = 15;

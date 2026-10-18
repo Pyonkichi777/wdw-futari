@@ -17,7 +17,7 @@ export interface PlanItem {
   pinned?: true;
   /** 終わった後にお土産を見る時間（分。5〜30の5分刻み） */
   shop?: number;
-  /** 終わった後、次の予定までにとる余裕（分。5〜120の5分刻み。なければ 5 分） */
+  /** 終わった後、次の予定までにとる余裕（分。5〜120の5分刻み。なければ 15 分） */
   buffer?: number;
 }
 
@@ -385,10 +385,10 @@ export const setShop = (plan: Plan, date: string, rideId: string, minutes: numbe
 
 /** 予定の後の余裕として選べる分（プルダウン。5〜120分の5分刻み） */
 export const BUFFER_OPTIONS: readonly number[] = Array.from({ length: 24 }, (_, i) => (i + 1) * 5);
-export const DEFAULT_BUFFER = 5;
+export const DEFAULT_BUFFER = 15;
 const isBuffer = (v: unknown): v is number => typeof v === "number" && BUFFER_OPTIONS.includes(v);
 
-/** その日のその予定の後の余裕を決める（既定の5分なら記録しない） */
+/** その日のその予定の後の余裕を決める（既定の15分なら記録しない） */
 export const setBuffer = (plan: Plan, date: string, rideId: string, minutes: number): Plan => ({
   ...plan,
   days: plan.days.map((d) => (d.date !== date ? d : { ...d, items: d.items.map((i) => (i.rideId === rideId ? withBuffer(i, minutes) : i)) })),
