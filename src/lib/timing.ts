@@ -22,7 +22,7 @@ const PATH_FACTOR = 1.4;
 /** 同じパークの中で次の場所へ歩く時間の最低（分）。場所の座標がないときは 10 分 */
 const WALK_MIN = 5;
 const WALK_UNKNOWN = 10;
-/** 予定と予定の間に毎回とる余裕（分） */
+/** 予定と予定の間に毎回とる余裕（分）の既定。予定ごとにプルダウンで 5〜120 分に変えられる（PlanItem.buffer） */
 export const BUFFER_MINUTES = 5;
 /** トイレ・休憩: 食事以外でこの分数ほど動き続けたら、次の予定の前にとる */
 export const REST_EVERY_MINUTES = 90;
@@ -131,7 +131,7 @@ export function dayTimeline(day: DayPlan, rideById: (id: string) => Ride | undef
     if (leg) segments.push({ type: "travel", from: at, to, leg });
     at = to;
   };
-  let prev: { id: string; park: ParkId; shop: number } | null = null;
+  let prev: { id: string; park: ParkId; shop: number; buffer: number } | null = null;
   // 食事以外で動き続けた時間（トイレ・休憩をとるか決める）
   let active = 0;
   for (const item of day.items) {
@@ -143,16 +143,18 @@ export function dayTimeline(day: DayPlan, rideById: (id: string) => Ride | undef
     if (prev) {
       const walk = before === ride.park && prev.park === ride.park ? walkMinutes(prev.id, ride.id) : 0;
       active += prev.shop;
-      const rest = active >= REST_EVERY_MINUTES && item.method !== "meal" ? REST_MINUTES : 0;
-      if (rest > 0) active = 0;
-      segments.push({ type: "gap", gap: { shop: prev.shop, walk, buffer: BUFFER_MINUTES, rest } });
-      active += walk + BUFFER_MINUTES;
+      // 余裕を15分以上とっていれば、そこでトイレ・休憩もとれるとみなす（別に足さない）
+      const longBreak = prev.buffer >= REST_MINUTES;
+      const rest = !longBreak && active >= REST_EVERY_MINUTES && item.method !== "meal" ? REST_MINUTES : 0;
+      if (rest > 0 || longBreak) active = 0;
+      segments.push({ type: "gap", gap: { shop: prev.shop, walk, buffer: prev.buffer, rest } });
+      active += walk + (longBreak ? 0 : prev.buffer);
     }
     const minutes = itemMinutes(ride, item.method);
     segments.push({ type: "item", item, ride, park: ride.park, minutes });
     // 食事は座って休めるので、そこで数え直す
     active = item.method === "meal" ? 0 : active + minutes;
-    prev = { id: ride.id, park: ride.park, shop: item.shop ?? 0 };
+    prev = { id: ride.id, park: ride.park, shop: item.shop ?? 0, buffer: item.buffer ?? BUFFER_MINUTES };
   }
   // その日の最後の予定の後にお土産を見るなら、ホテルへ戻る前に
   if (prev && prev.shop > 0) segments.push({ type: "gap", gap: { shop: prev.shop, walk: 0, buffer: 0, rest: 0 } });

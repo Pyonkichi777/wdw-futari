@@ -2900,3 +2900,19 @@ details.about > summary {
   color: var(--pink);
   font-weight: 700;
 }
+.buffer-all label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.buffer-all select {
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}

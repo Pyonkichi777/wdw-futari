@@ -125,3 +125,30 @@ describe("時短パスを予約枠の最後の時刻に乗っても（最遅）�
     }
   });
 });
+
+describe("予定の間の余裕をプルダウンで（5〜120分）", async () => {
+  const { setBuffer, setBufferAll, parsePlan, BUFFER_OPTIONS } = await import("./plan");
+  const d = plan.days.find((x) => x.items.length > 3)!;
+  const target = d.items[1]!;
+  it("選べるのは5〜120分の5分刻み", () => {
+    expect(BUFFER_OPTIONS[0]).toBe(5);
+    expect(BUFFER_OPTIONS[BUFFER_OPTIONS.length - 1]).toBe(120);
+    expect(BUFFER_OPTIONS).toHaveLength(24);
+  });
+  it("1つの予定の後を60分にすると、次の予定が遅くなり、保存しても残る", () => {
+    const before = dayTimes(d, rideById).hints.get(d.items[2]!.rideId)!.at;
+    const p2 = setBuffer(plan, d.date, target.rideId, 60);
+    const d2 = p2.days.find((x) => x.date === d.date)!;
+    expect(dayTimes(d2, rideById).hints.get(d2.items[2]!.rideId)!.at).toBeGreaterThan(before + 30);
+    expect(parsePlan(JSON.parse(JSON.stringify(p2))).days.find((x) => x.date === d.date)!.items.find((i) => i.rideId === target.rideId)?.buffer).toBe(60);
+  });
+  it("余裕を15分以上にした区間では、トイレ休憩を別に足さない。まとめて設定もできる", () => {
+    const all = setBufferAll(plan, 20);
+    for (const day of all.days) for (const s of dayTimeline(day, rideById).segments) if (s.type === "gap" && s.gap.buffer > 0) {
+      expect(s.gap.buffer).toBe(20);
+      expect(s.gap.rest).toBe(0);
+    }
+    const back = setBufferAll(all, 5);
+    expect(back.days.flatMap((x) => x.items).some((i) => i.buffer !== undefined)).toBe(false);
+  });
+});

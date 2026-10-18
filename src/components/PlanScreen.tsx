@@ -11,6 +11,10 @@ import {
   unpinItem,
   setShop,
   SHOP_OPTIONS,
+  setBuffer,
+  setBufferAll,
+  BUFFER_OPTIONS,
+  DEFAULT_BUFFER,
   METHOD_LABEL,
   SLOT_LABEL,
   SLOT_ORDER,
@@ -315,6 +319,27 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
 
       <PlanTextPanel plan={plan} checks={checks} hours={hours} />
 
+      <div className="plan-day buffer-all">
+        <label>
+          ⏳ 予定と予定の間の余裕を、すべての予定でまとめて
+          <select
+            value=""
+            onChange={(e) => {
+              const m = Number(e.target.value);
+              if (m && window.confirm(`すべての予定の後の余裕を${m}分にします（予定ごとに変えたものも上書き）。よろしいですか？`)) save((p) => setBufferAll(p, m));
+            }}
+          >
+            <option value="">選ぶ…</option>
+            {BUFFER_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {m}分
+              </option>
+            ))}
+          </select>
+        </label>
+        <small className="note">予定ごとの「⏳ 次までの余裕」で、1つずつ変えることもできます（5〜120分）。15分以上にすると、そこでトイレ・休憩もとれるとみなします。</small>
+      </div>
+
       {stale && (
         <div className="stale-bar">
           <p>
@@ -360,6 +385,7 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
           checks={checks}
           onUnpin={(id) => save((p) => unpinItem(p, id))}
           onShop={(id, m) => save((p) => setShop(p, d.date, id, m))}
+          onBuffer={(id, m) => save((p) => setBuffer(p, d.date, id, m))}
           editing={editing}
           here={d.date === today ? here : null}
           onEdit={setEditing}
@@ -450,6 +476,7 @@ function DayCard({
   checks,
   onUnpin,
   onShop,
+  onBuffer,
   editing,
   here,
   onEdit,
@@ -470,6 +497,7 @@ function DayCard({
   checks: Checks;
   onUnpin: (id: string) => void;
   onShop: (id: string, minutes: number) => void;
+  onBuffer: (id: string, minutes: number) => void;
   editing: string | null;
   here: ParkId | "HOTEL" | null;
   onEdit: (id: string | null) => void;
@@ -534,6 +562,16 @@ function DayCard({
               reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
+            <label className="shop-pick">
+              ⏳ 次までの余裕
+              <select value={it.buffer ?? DEFAULT_BUFFER} onChange={(e) => onBuffer(r.id, Number(e.target.value))} aria-label={`${r.nameJa}の後、次の予定までの余裕`}>
+                {BUFFER_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}分
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="shop-pick">
               🛍 終わった後にお土産を見る
               <select value={it.shop ?? 0} onChange={(e) => onShop(r.id, Number(e.target.value))} aria-label={`${r.nameJa}の後にお土産を見る時間`}>
