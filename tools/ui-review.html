@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>WDW 検証用データ</title></head>
+<body><div id="root"></div><script type="module">
+// VITE_DEMO_MODE=true のローカル開発サーバー専用。本番の入口やFirebaseには書き込まない
+if (!import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE !== "true") throw new Error("お試し用の開発サーバーで開いてください");
+const { RIDES } = await import("../src/data/rides.ts");
+if (!localStorage.getItem("wdw-ui-review-seeded")) {
+  const votes = Object.fromEntries(RIDES.map((r) => [r.id, "want"]));
+  localStorage.setItem("wdw-futari:demo:person", "toshi");
+  localStorage.setItem("wdw-futari:demo:votes", JSON.stringify({ toshi: votes, tsuma: votes }));
+  localStorage.setItem("wdw-futari:demo:consensus", JSON.stringify({ confirmed: true, updatedBy: null, updatedAt: null, items: ["lion-king", "kilimanjaro", "everest", "dine-cinderella-royal-table"].map((rideId) => ({ rideId, rank: "A" })) }));
+  localStorage.setItem("wdw-futari:demo:plan", JSON.stringify({ updatedBy: null, updatedAt: null, days: [
+    { date: "2027-05-04", morningPark: "AK", eveningPark: "AK", items: [{ rideId: "lion-king", slot: "pm", method: "show" }, { rideId: "kilimanjaro", slot: "pm", method: "multi" }, { rideId: "everest", slot: "pm", method: "multi" }] },
+    { date: "2027-05-05", morningPark: "AK", eveningPark: "MK", items: [{ rideId: "dine-cinderella-royal-table", slot: "dinner", method: "meal" }] }
+  ] }));
+  localStorage.setItem("wdw-ui-review-seeded", "1");
+}
+await import("../src/main.tsx");
+</script></body></html>

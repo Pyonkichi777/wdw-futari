@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:offline": "node tools/check-offline.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
