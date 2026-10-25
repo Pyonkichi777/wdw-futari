@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "postbuild": "npm run test:offline",
     "preview": "vite preview",
     "test": "vitest run",
     "test:offline": "node tools/check-offline.mjs",
