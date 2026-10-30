@@ -42,7 +42,8 @@ export interface TimeHint {
 }
 
 /** 取れた予約の時刻（rideId → 分）。食事・Single Pass・Multi Pass の実際の時刻 */
-export type FixedTimes = ReadonlyMap<string, number>;
+export type FixedTime = number | { from: number; to: number };
+export type FixedTimes = ReadonlyMap<string, FixedTime>;
 
 export const timeHints = (day: DayPlan, rideById: (id: string) => Ride | undefined, hours?: HoursFeed | null, fixed?: FixedTimes): Map<string, TimeHint> =>
   dayTimes(day, rideById, hours, fixed).hints;
@@ -63,7 +64,7 @@ export function dayTimes(
   // 朝の予定がない日（予備日で夕食だけ、など）は、その日の最初の予定に合わせて出かける
   const firstSlot = day.items[0]?.slot;
   const lateStart = firstSlot === "lunch" || firstSlot === "pm" || firstSlot === "dinner" || firstSlot === "night";
-  const start = lateStart
+  let start = lateStart
     ? firstSlot === "lunch"
       ? 11 * 60 + 30
       : firstSlot === "pm"
@@ -76,6 +77,9 @@ export function dayTimes(
           ? open - 30
           : EARLY_OPEN
       : open;
+  // 最初に取れた予約がある日は、その時刻／枠の開始に合わせて到着する
+  const firstFixed = day.items[0] ? fixed?.get(day.items[0].rideId) : undefined;
+  if (firstFixed !== undefined) start = typeof firstFixed === "number" ? firstFixed : firstFixed.from;
   let t = start;
   let arrived = false;
   // 表示する時刻は、前の項目より前にならないようにする（上から下へ時間が進む）
@@ -112,6 +116,18 @@ export function dayTimes(
     busy += minutes;
     const got = fixed?.get(ride.id);
     if (got !== undefined) {
+      if (typeof got !== "number") {
+        // 到着枠の開始に遅れても、終了までに着ければ利用できる。終了は入力値をそのまま保持
+        const at = Math.max(t, got.from);
+        const late = !first && t > got.to;
+        const worstLate = !first && !late && tw > got.to;
+        out.set(ride.id, { at, arrive: t, end: at + minutes, window: got, fixed: true,
+          text: `${clock(at)}頃（取れた到着枠 ${clock(got.from)}〜${clock(got.to)}）`,
+          ...(late ? { late: true } : {}), ...(worstLate ? { worstLate: true } : {}) });
+        t = at + minutes;
+        tw = Math.max(tw, got.to) + minutes;
+        continue;
+      }
       // 取れた予約の時刻に合わせる（前の予定が終わらないなら「間に合わない」、最遅の場合だけ間に合わないなら「最遅だと遅れる」）
       const late = !first && got < t;
       const worstLate = !first && !late && got < tw;

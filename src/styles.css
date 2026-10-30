@@ -2280,7 +2280,7 @@ button.glass {
   gap: 10px;
   align-items: flex-start;
 }
-.rsv-list input {
+.rsv-list input[type="checkbox"] {
   width: 22px;
   height: 22px;
   margin-top: 2px;
@@ -2918,12 +2918,28 @@ details.rank-group > summary h3 {
   margin: 4px 0 0 32px;
   font-size: 0.8rem;
 }
+.booking-time {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+}
+.booking-time legend { font-weight: 700; }
+.booking-inputs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.booking-time .note { margin: 4px 0; }
+.app-version { padding: 6px 16px; background: var(--surface); color: var(--text); font-size: 0.8rem; overflow-wrap: anywhere; }
+.app-version button { margin: 4px 8px; }
+.app-version p { margin: 4px 0; }
 .rsv-got label {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .rsv-got input {
+  width: 8em;
+  min-width: 7em;
+  min-height: 44px;
   font-size: 0.95rem;
   padding: 4px 6px;
   border-radius: 8px;
