@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-10T09:00:00+09:00",
+  "updatedAt": "2026-10-31T22:00:00+09:00",
   "trip": { "from": "2027-04-29", "to": "2027-05-07" },
   "items": [
     {
@@ -93,6 +93,31 @@
       "action": "対応不要（図鑑にはもともと入れていない）",
       "sources": [
         { "title": "Mouse Hacking｜Animal Kingdom Lightning Lanes Strategy 2026", "url": "https://www.mousehacking.com/blog/animal-kingdom-lightning-lanes-rides-and-strategy" }
+      ]
+    },
+    {
+      "id": "2026-10-31-lightning-lane-price-up",
+      "publishedAt": "2026-10-31",
+      "title": "ライトニング・レーンの料金上限が11月1日から上がる（シングルパス・プレミア）",
+      "summary": "2026年11月1日から、人気4アトラクションのライトニング・レーン・シングルパスの上限価格が上がり、マジックキングダムのプレミアパスの上限も上がると報じられている（金額は媒体で食い違いがあり、$449〜$499と書かれている）。マルチパスは当面据え置きとの報道。",
+      "impact": "low",
+      "category": "ticket",
+      "rideIds": [],
+      "period": {
+        "from": "2026-11-01",
+        "to": null
+      },
+      "overlapsTrip": "maybe",
+      "action": "予算を組むときは優先パスの料金が上がっている前提にし、金額は購入前に公式で確認",
+      "sources": [
+        {
+          "title": "WDWinfo｜Lightning Lane Prices Climb to Record $499",
+          "url": "https://www.wdwinfo.com/news-stories/disney-world-lightning-lane-prices-climb-to-record-499/"
+        },
+        {
+          "title": "Inside the Magic｜Lightning Lane New Era Weekend Sales",
+          "url": "https://insidethemagic.net/2026/10/disney-world-lightning-lane-new-era-weekend-sales-confirmed-th1/"
+        }
       ]
     }
   ]
