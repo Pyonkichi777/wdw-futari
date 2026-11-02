@@ -1,6 +1,9 @@
 {
-  "updatedAt": "2026-10-31T22:00:00+09:00",
-  "trip": { "from": "2027-04-29", "to": "2027-05-07" },
+  "updatedAt": "2026-11-02T06:50:00+09:00",
+  "trip": {
+    "from": "2027-04-29",
+    "to": "2027-05-07"
+  },
   "items": [
     {
       "id": "2026-10-10-carousel-of-progress-refurb",
@@ -9,13 +12,24 @@
       "summary": "マジックキングダムのカルーセル・オブ・プログレスは2026年7月6日から休止中。新しい場面と人形を加えて、2027年の春の終わりごろに再開する見込みと報じられている。旅行期間（4/29〜5/7）に間に合うかは未定。公式サイトでも「改装中」と表示されている。",
       "impact": "medium",
       "category": "ride",
-      "rideIds": ["carousel-of-progress"],
-      "period": { "from": "2026-07-06", "to": null },
+      "rideIds": [
+        "carousel-of-progress"
+      ],
+      "period": {
+        "from": "2026-07-06",
+        "to": null
+      },
       "overlapsTrip": "maybe",
       "action": "優先度は低いので計画には入れず、出発1ヶ月前に再開日を確認する",
       "sources": [
-        { "title": "WDW Magazine｜Disney World Refurbishment Schedule", "url": "https://www.wdw-magazine.com/disney-world-refurbishment-schedule/" },
-        { "title": "公式｜Walt Disney's Carousel of Progress", "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-carousel-of-progress/" }
+        {
+          "title": "WDW Magazine｜Disney World Refurbishment Schedule",
+          "url": "https://www.wdw-magazine.com/disney-world-refurbishment-schedule/"
+        },
+        {
+          "title": "公式｜Walt Disney's Carousel of Progress",
+          "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-carousel-of-progress/"
+        }
       ]
     },
     {
@@ -25,12 +39,17 @@
       "summary": "公式サイトで、メインストリート駅・ファンタジーランド駅の鉄道が「改装中（Refurbishment）」と表示されている。再開時期の発表はまだない。",
       "impact": "low",
       "category": "ride",
-      "rideIds": ["railroad"],
+      "rideIds": [
+        "railroad"
+      ],
       "period": null,
       "overlapsTrip": "maybe",
       "action": "移動手段としては使わない計画なので影響は小さい。出発前に営業状況を確認",
       "sources": [
-        { "title": "公式｜Walt Disney World Railroad", "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-world-railroad/" }
+        {
+          "title": "公式｜Walt Disney World Railroad",
+          "url": "https://disneyworld.disney.go.com/attractions/magic-kingdom/walt-disney-world-railroad/"
+        }
       ]
     },
     {
@@ -41,12 +60,21 @@
       "impact": "low",
       "category": "transport",
       "rideIds": [],
-      "period": { "from": "2027-01-24", "to": "2027-01-30" },
+      "period": {
+        "from": "2027-01-24",
+        "to": "2027-01-30"
+      },
       "overlapsTrip": "no",
       "action": "対応不要。旅行中の臨時運休（雷雨・強風で止まることがある）は当日アプリで確認",
       "sources": [
-        { "title": "Disney Tourist Blog｜Skyliner Closing Dates for 2027 Refurbishment", "url": "https://www.disneytouristblog.com/skyliner-closure-dates-2027-refurbishment-disney-world/" },
-        { "title": "WDW News Today｜Disney Skyliner 2027 Refurbishment Closure Announced", "url": "https://wdwnt.com/2025/09/disney-skyliner-2027-refurbishment-closure/" }
+        {
+          "title": "Disney Tourist Blog｜Skyliner Closing Dates for 2027 Refurbishment",
+          "url": "https://www.disneytouristblog.com/skyliner-closure-dates-2027-refurbishment-disney-world/"
+        },
+        {
+          "title": "WDW News Today｜Disney Skyliner 2027 Refurbishment Closure Announced",
+          "url": "https://wdwnt.com/2025/09/disney-skyliner-2027-refurbishment-closure/"
+        }
       ]
     },
     {
@@ -56,13 +84,24 @@
       "summary": "エベレストのシングルライダー（1人乗り専用の列）が2026年9月20日ごろで廃止された。通常の列の乗せ方を変えて待ち時間を短くしたため、とされる。1人乗りの列で時短する作戦は使えない。",
       "impact": "medium",
       "category": "ride",
-      "rideIds": ["everest"],
-      "period": { "from": "2026-09-21", "to": null },
+      "rideIds": [
+        "everest"
+      ],
+      "period": {
+        "from": "2026-09-21",
+        "to": null
+      },
       "overlapsTrip": "yes",
       "action": "1人乗り専用の列は使えない前提で計画する（時短パスか、ふつうに並ぶ）。今の作戦での予定は下に表示",
       "sources": [
-        { "title": "Disney Food Blog｜Disney World To End Expedition Everest Single Rider Line", "url": "https://www.disneyfoodblog.com/2026/09/18/disney-world-to-end-expedition-everest-single-rider-line/" },
-        { "title": "Disney Tourist Blog｜Single Rider is Ending at Expedition Everest", "url": "https://www.disneytouristblog.com/disney-world-confirms-single-rider-is-ending-at-expedition-everest/" }
+        {
+          "title": "Disney Food Blog｜Disney World To End Expedition Everest Single Rider Line",
+          "url": "https://www.disneyfoodblog.com/2026/09/18/disney-world-to-end-expedition-everest-single-rider-line/"
+        },
+        {
+          "title": "Disney Tourist Blog｜Single Rider is Ending at Expedition Everest",
+          "url": "https://www.disneytouristblog.com/disney-world-confirms-single-rider-is-ending-at-expedition-everest/"
+        }
       ]
     },
     {
@@ -72,12 +111,17 @@
       "summary": "エプコットのソアリンは、アメリカ建国250周年に合わせた期間限定版「ソアリン・アクロス・アメリカ」を上映中。2027年5月にどちらの映像になっているかは未定。",
       "impact": "low",
       "category": "ride",
-      "rideIds": ["soarin"],
+      "rideIds": [
+        "soarin"
+      ],
       "period": null,
       "overlapsTrip": "maybe",
       "action": "出発1ヶ月前に上映中の映像を確認",
       "sources": [
-        { "title": "公式｜Soarin' Across America", "url": "https://disneyworld.disney.go.com/attractions/epcot/soarin-across-america/" }
+        {
+          "title": "公式｜Soarin' Across America",
+          "url": "https://disneyworld.disney.go.com/attractions/epcot/soarin-across-america/"
+        }
       ]
     },
     {
@@ -88,11 +132,17 @@
       "impact": "low",
       "category": "ride",
       "rideIds": [],
-      "period": { "from": "2026-02-02", "to": null },
+      "period": {
+        "from": "2026-02-02",
+        "to": null
+      },
       "overlapsTrip": "yes",
       "action": "対応不要（図鑑にはもともと入れていない）",
       "sources": [
-        { "title": "Mouse Hacking｜Animal Kingdom Lightning Lanes Strategy 2026", "url": "https://www.mousehacking.com/blog/animal-kingdom-lightning-lanes-rides-and-strategy" }
+        {
+          "title": "Mouse Hacking｜Animal Kingdom Lightning Lanes Strategy 2026",
+          "url": "https://www.mousehacking.com/blog/animal-kingdom-lightning-lanes-rides-and-strategy"
+        }
       ]
     },
     {
@@ -117,6 +167,33 @@
         {
           "title": "Inside the Magic｜Lightning Lane New Era Weekend Sales",
           "url": "https://insidethemagic.net/2026/10/disney-world-lightning-lane-new-era-weekend-sales-confirmed-th1/"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-02-tiana-refurb",
+      "publishedAt": "2026-11-02",
+      "title": "ティアナのバイユー・アドベンチャーが改装休止（12/18再開予定）",
+      "summary": "マジックキングダムのティアナのバイユー・アドベンチャーが2026年11月2日から改装で休止中。再開は12月18日の予定で、旅行より前に終わる見込み。",
+      "action": "旅行の時期には重ならないので対応は不要。再開日が延びたら見直す。",
+      "impact": "low",
+      "category": "ride",
+      "rideIds": [
+        "tiana"
+      ],
+      "period": {
+        "from": "2026-11-02",
+        "to": "2026-12-18"
+      },
+      "overlapsTrip": "no",
+      "sources": [
+        {
+          "title": "Tiana's Bayou Adventure Closing for Refurbishment Nov. 2 (WDWinfo)",
+          "url": "https://www.wdwinfo.com/news-stories/tianas-bayou-adventure-closing-for-refurbishment-nov-2/"
+        },
+        {
+          "title": "Disney World Sets Reopening Date for Tiana's Bayou Adventure (Blog Mickey)",
+          "url": "https://blogmickey.com/2026/10/disney-world-sets-reopening-date-for-tianas-bayou-adventure-following-refurbishment/"
         }
       ]
     }
