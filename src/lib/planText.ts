@@ -1,7 +1,8 @@
-import { parkName } from "../data/parks";
+import { dayVisit } from "./dayLabel";
+import { APP_VERSION } from "./version";
 import type { Ride } from "../types";
 import { dayTimes } from "./bookTimes";
-import { fixedTimesFor, type Checks } from "./checks";
+import { fixedTimesFor, gotTimeText, isChecked, type Checks } from "./checks";
 import type { HoursFeed } from "./hours";
 import { METHOD_LABEL, type Plan } from "./plan";
 import { reservationTasks } from "./reservations";
@@ -17,10 +18,11 @@ export function planToText(plan: Plan, checks: Checks, rideById: (id: string) =>
   const lines: string[] = [];
   lines.push("ぞうたんフロリダ上陸ツアー 作戦の控え");
   lines.push(`控えた日時: ${now.toLocaleString("ja-JP")}（これより後の変更は入っていません）`);
-  lines.push("時刻は目安（取れた予約は「取れた予約」と表示）");
+  lines.push(`アプリ版: ${APP_VERSION}`);
+  lines.push("時刻は現地時間の目安（取得済みの時刻・到着枠は別表示。ショーの仮置きは当日確認）");
   for (const d of plan.days) {
     lines.push("");
-    lines.push(`■ ${md(d.date)} ${parkName(d.morningPark)}${d.eveningPark !== d.morningPark ? ` → 夕方から${parkName(d.eveningPark)}` : ""}`);
+    lines.push(`■ ${md(d.date)} ${dayVisit(d, rideById).label}`);
     if (d.items.length === 0) {
       lines.push("  （予定なし）");
       continue;
@@ -31,15 +33,16 @@ export function planToText(plan: Plan, checks: Checks, rideById: (id: string) =>
       lines.push(`  ${t.hints.get(i.rideId)?.text ?? ""}　${r?.nameJa ?? i.rideId}（${METHOD_LABEL[i.method]}）${i.shop ? `＋お土産${i.shop}分` : ""}${i.buffer ? `＋余裕${i.buffer}分` : ""}`);
     }
   }
-  const tasks = reservationTasks(plan, rideById).filter((x) => x.kind !== "singleOptional");
+  const tasks = reservationTasks(plan, rideById, hours);
   if (tasks.length > 0) {
     lines.push("");
     lines.push("■ 予約・購入の状況");
     for (const x of tasks) {
       const c = checks[x.id];
-      const got = c?.got ? `（取れた時刻: ${Object.entries(c.got).map(([rid, hm]) => `${rideById(rid)?.nameJa ?? rid} ${hm}`).join("、")}）` : "";
-      lines.push(`  ${c ? "✓ 取得済み" : "□ まだ"}　${x.title}${got}`);
+      const got = c?.got ? `（取れた時刻: ${Object.entries(c.got).map(([rid, hm]) => `${rideById(rid)?.nameJa ?? rid} ${gotTimeText(hm)}`).join("、")}）` : "";
+      lines.push(`  ${isChecked(c) ? "✓ 取得済み" : "□ まだ"}　${x.title}${got}`);
     }
   }
+  lines.push("\n取得済み時刻・到着枠に遅れる表示があれば、前の予定を確認してください。控えは自動更新されません。");
   return lines.join("\n");
 }

@@ -46,7 +46,9 @@ import { applyFix, excludeAllLow, skipUnplaced } from "../lib/planFixes";
 import { optimizePlan, routeDay } from "../lib/route";
 import { bookingSteps, daysUntil, isHardToBook, llDayDifficulty } from "../lib/reservations";
 import { voteLabel, type AllVotes } from "../lib/consensus";
-import { fixedTimesFor, type Checks } from "../lib/checks";
+import { fixedTimesFor, isChecked, type Checks, type GotTime } from "../lib/checks";
+import { dayVisit, PARK_SHORT } from "../lib/dayLabel";
+import { BookingTimeField } from "./BookingTimeField";
 import { dayAdvice } from "../lib/dayAdvice";
 import { ParkMap } from "./ParkMap";
 import { isLowPriority, isVetoed } from "../lib/priority";
@@ -62,11 +64,13 @@ interface Props {
   onUpdate: (change: (p: Plan) => Plan) => void;
   /** 自分の変更がまだ相手に届いていない（電波待ち） */
   pending: boolean;
+  fromCache: boolean;
+  shared: boolean;
   votes: AllVotes;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
   /** 取れた予約の時刻を入れる（"HH:MM"、null で消す） */
-  onGotTime: (id: string, rideId: string, hm: string | null) => void;
+  onGotTime: (id: string, rideId: string, hm: GotTime | null, expected: GotTime | null) => Promise<void>;
   /** 図鑑でそのアトラクション・店を見る（anchor = 戻ってきたときに表示する場所） */
   onZukan: (rideId: string, anchor: string) => void;
   /** 混雑予想サイトから取り込んだ値（まだ無ければ null） */
@@ -97,7 +101,7 @@ function methodsFor(r: Ride): Method[] {
 }
 
 /** A5 日割り作戦ボード＋自動チェック＋A7 時短パス段取り表 */
-export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, votes, checks, onCheck, onGotTime, onZukan, crowd, hours, snapshots, onSaveSnapshot, onDeleteSnapshot }: Props) {
+export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, fromCache, shared, votes, checks, onCheck, onGotTime, onZukan, crowd, hours, snapshots, onSaveSnapshot, onDeleteSnapshot }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [here, setHere] = useState<ParkId | "HOTEL" | null>(null);
   const [leftOpen, setLeftOpen] = useState(false);
@@ -208,8 +212,8 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
     const late = d.items.flatMap((i): PlanWarning[] => {
       const x = h.get(i.rideId);
       const name = rideById(i.rideId)?.nameJa ?? i.rideId;
-      if (x?.late) return [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${clock(x.at)}）に、前の予定から間に合いません（移動・余裕・トイレ休憩を含めて計算）。前の予定を外すか動かしてください` }];
-      if (x?.worstLate) return [{ level: "yellow" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${clock(x.at)}）は、前の時短パスに予約枠の最後の時刻で乗ると間に合いません。前の時短パスは枠の早めに乗る` }];
+      if (x?.late) return [{ level: "red" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${x.window ? `${clock(x.window.from)}〜${clock(x.window.to)}` : clock(x.at)}）に、前の予定から間に合いません（移動・余裕・トイレ休憩を含めて計算）。前の予定を外すか動かしてください` }];
+      if (x?.worstLate) return [{ level: "yellow" as const, date: d.date, message: `${dayLabel(d.date)}: 取れた予約「${name}」（${x.window ? `${clock(x.window.from)}〜${clock(x.window.to)}` : clock(x.at)}）は、前の時短パスに予約枠の最後の時刻で乗ると間に合いません。前の時短パスは枠の早めに乗る` }];
       return [];
     });
     // 公式の営業時間が出ていれば、閉園を過ぎる予定を知らせる
@@ -253,7 +257,8 @@ export function PlanScreen({ me, consensus, plan: stored, onUpdate, pending, vot
   return (
     <section className="plan">
       <h2>5日間の作戦</h2>
-      <p className={pending ? "sync pending" : "sync ok"}>{pending ? "⏳ 送信待ち（電波が戻ると自動で相手に届きます）" : "☁ 2人で同期済み（どちらのスマホで変えても、もう一方にすぐ反映）"}</p>
+      <p className={pending || fromCache ? "sync pending" : "sync ok"}>{!shared ? "📱 この端末の保存を表示中（お試しモード）" : pending ? "⏳ 保存・同期を確認中。完了するまで画面を閉じないでください" : fromCache ? "📱 端末に保存された作戦を表示中。相手の最新の変更は未確認です" : "☁ 最新の作戦を取得済み（2人で共有）"}</p>
+      {shared && <p className="note">共有作戦の変更・復元、予約時刻の保存は通信できるときに行います。通信できないときは閲覧・文字の控えを利用してください。</p>}
       {plan.updatedBy && plan.updatedAt && (
         <p className="note">
           最終更新: {plan.updatedBy === "toshi" ? "Toshi" : "妻"}（{new Date(plan.updatedAt).toLocaleString("ja-JP")}）
@@ -572,7 +577,7 @@ function DayCard({
               low={isLow(r.id)}
               onQuickRemove={() => onRemove(r.id)}
               onZukan={() => onZukan(r.id, `pi-${day.date}-${r.id}`)}
-              reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? checks[`dine:${day.date}:${r.id}`] !== undefined : undefined}
+              reserved={it.method === "meal" && r.dining && r.dining.booking !== "none" ? isChecked(checks[`dine:${day.date}:${r.id}`]) : undefined}
               onClick={() => onEdit(editing === r.id ? null : r.id)}
             />
             <label className="shop-pick">
@@ -685,7 +690,7 @@ function DayTimeline({
                 {next && nextSeg?.type === "item" && (
                   <span className="arrive">
                     ➡️ 次の「{nextSeg.ride.nameJa}」に {clock(next.arrive)}頃 着く
-                    {next.fixed && next.arrive > next.at ? "（取れた予約の時刻に遅れる）" : wait >= 5 ? `（始まりまで約${wait}分待ち）` : ""}
+                    {next.late ? "（取れた予約の時刻に遅れる）" : wait >= 5 ? `（始まりまで約${wait}分待ち）` : ""}
                   </span>
                 )}
               </li>
@@ -980,7 +985,7 @@ function ReservationPanel({
   plan: Plan;
   checks: Checks;
   onCheck: (id: string, done: boolean) => void;
-  onGotTime: (id: string, rideId: string, hm: string | null) => void;
+  onGotTime: (id: string, rideId: string, hm: GotTime | null, expected: GotTime | null) => Promise<void>;
   votes: AllVotes;
   onZukan: (rideId: string, anchor: string) => void;
   hours: HoursFeed | null;
@@ -992,15 +997,21 @@ function ReservationPanel({
   const match = (t: (typeof all)[number]): boolean =>
     need === "ALL" ? true : t.kind === "prep" ? false : need === "optional" ? t.kind === "singleOptional" : t.kind !== "singleOptional" && t.need === need;
   const countOf = (f: NeedFilter): number => (f === "ALL" ? all.length : f === "optional" ? all.filter((t) => t.kind === "singleOptional").length : all.filter((t) => t.kind !== "singleOptional" && t.need === f).length);
-  const todo = steps.flatMap((st) => st.tasks).filter((t) => checks[t.id] === undefined && t.kind !== "singleOptional");
+  const tasks = steps.flatMap((st) => st.tasks);
+  const todo = tasks.filter((t) => !isChecked(checks[t.id]) && t.kind !== "singleOptional");
+  const prep = tasks.filter((t) => t.kind === "prep");
+  const required = all.filter((t) => t.kind !== "singleOptional");
+  const optional = all.filter((t) => t.kind === "singleOptional");
+  const remaining = (list: typeof tasks): number => list.filter((t) => !isChecked(checks[t.id])).length;
   const next = todo[0];
   let no = 0;
   return (
     <details className="plan-day rsv-panel" id="plan-rsv" open={todo.length > 0}>
       <summary>
         <strong>📅 事前の予約・購入（いつ・何を・どの順番で）</strong>
-        <span className={todo.length > 0 ? "rsv todo" : "rsv done"}>{todo.length > 0 ? `残り${todo.length}件` : "すべて済み"}</span>
+        <span className={todo.length > 0 ? "rsv todo" : "rsv done"}>{todo.length > 0 ? `準備・予約 残り${todo.length}件` : "準備・予約は済み"}</span>
       </summary>
+      <p className="note">残り：準備 {remaining(prep)}/{prep.length}件 ＋ 予約・購入 {remaining(required)}/{required.length}件 ／ 任意 {remaining(optional)}/{optional.length}件（残り合計から除外）。下の絞り込み件数は準備を除く予約・購入です。</p>
       {next && (
         <p className="rsv-next">
           👉 次にやること: <strong>{next.title}</strong>
@@ -1009,7 +1020,7 @@ function ReservationPanel({
       <div className="chips wrap" role="group" aria-label="必須度で絞り込む">
         {NEED_FILTERS.map((f) => (
           <button key={f.id} aria-pressed={need === f.id} className={need === f.id ? "chip on" : "chip"} onClick={() => setNeed(f.id)}>
-            {f.label}
+            {f.id === "ALL" ? "予約・購入すべて" : f.label}
             <span className="vs-num">{countOf(f.id)}</span>
           </button>
         ))}
@@ -1018,7 +1029,7 @@ function ReservationPanel({
       {steps.map((st, i) => {
         const shown = st.tasks.filter(match);
         if (need !== "ALL" && shown.length === 0) return null;
-        const doneAll = st.tasks.length > 0 && st.tasks.every((t) => checks[t.id] !== undefined || t.kind === "singleOptional");
+        const doneAll = st.tasks.length > 0 && st.tasks.every((t) => isChecked(checks[t.id]) || t.kind === "singleOptional");
         const left = st.at ? daysUntil(st.at) : null;
         return (
           <section key={st.id} className={doneAll ? "rsv-step is-done" : "rsv-step"}>
@@ -1042,9 +1053,9 @@ function ReservationPanel({
                   const done = checks[t.id];
                   no += 1;
                   return (
-                    <li key={t.id} id={`rsv-${t.id}`} className={done ? "is-done" : undefined}>
+                    <li key={t.id} id={`rsv-${t.id}`} className={isChecked(done) ? "is-done" : undefined}>
                       <label>
-                        <input type="checkbox" checked={done !== undefined} onChange={(e) => onCheck(t.id, e.target.checked)} />
+                        <input type="checkbox" checked={isChecked(done)} onChange={(e) => onCheck(t.id, e.target.checked)} />
                         <span>
                           <strong>
                             <span className="rsv-order">{no}.</span> {t.title}
@@ -1054,7 +1065,7 @@ function ReservationPanel({
                           <small>{t.detail}</small>
                           {t.opens && <small className="rsv-at">📆 予約する日時: {t.opens}</small>}
                           {t.pick && <small className="rsv-at">🕐 選ぶ時間枠: {t.pick}</small>}
-                          {done ? (
+                          {isChecked(done) && done ? (
                             <small className="rsv-by">
                               ✓ 取得済み（{done.by === "toshi" ? "Toshi" : "妻"}・{new Date(done.at).toLocaleDateString("ja-JP")}）
                               {canTime(t) && !done.got && " ／ 取れた時刻を入れると作戦の時刻に反映されます"}
@@ -1067,10 +1078,8 @@ function ReservationPanel({
                       {canTime(t) && (
                         <div className="rsv-got">
                           {t.rideIds.map((rid) => (
-                            <label key={rid}>
-                              <span>{t.rideIds.length > 1 ? `${rideById(rid)?.nameJa ?? rid}：` : ""}取れた時刻</span>
-                              <input type="time" value={done?.got?.[rid] ?? ""} onChange={(e) => onGotTime(t.id, rid, e.target.value || null)} />
-                            </label>
+                            <BookingTimeField key={rid} name={rideById(rid)?.nameJa ?? rid} window={t.kind !== "dining"}
+                              value={done?.got?.[rid]} onSave={(value, expected) => onGotTime(t.id, rid, value, expected)} />
                           ))}
                         </div>
                       )}
@@ -1104,7 +1113,6 @@ function ReservationPanel({
 }
 
 const shortDay = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
-const PARK_SHORT: Record<ParkId, string> = { MK: "マジック", EP: "エプコット", HS: "スタジオ", AK: "アニマル" };
 
 /** 押すとその場所へ飛ぶ。閉じている折りたたみは開いてから飛ぶ */
 function jumpTo(id: string): void {
@@ -1129,12 +1137,13 @@ function DayJump({ days, today, reds, left, onLeft }: { days: readonly DayPlan[]
       <button className="jump" onClick={() => jumpTo("plan-save")}>
         💾保存
       </button>
-      {days.map((d) => (
-        <button key={d.date} className={`jump park-${d.morningPark}${d.date === today ? " today" : ""}`} onClick={() => jumpTo(`plan-day-${d.date}`)}>
-          <strong>{`${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`}</strong>
-          <small>{PARK_SHORT[d.morningPark]}</small>
-        </button>
-      ))}
+      {days.map((d) => {
+        const visit = dayVisit(d, rideById);
+        return <button key={d.date} className={`jump${visit.park ? ` park-${visit.park}` : ""}${d.date === today ? " today" : ""}`} onClick={() => jumpTo(`plan-day-${d.date}`)}>
+          <strong>{shortDay(d.date)}</strong>
+          <small>{visit.label}</small>
+        </button>;
+      })}
       {left > 0 && (
         <button
           className="jump"

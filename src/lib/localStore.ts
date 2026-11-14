@@ -2,7 +2,8 @@ import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, type AllMeals } from "./meals";
 import { emptyPlan, type Plan } from "./plan";
-import type { Checks } from "./checks";
+import { isGotTime, parseChecks, type Checks, type GotTime } from "./checks";
+import { guardPlanChange } from "./planSync";
 import { addSnapshot, parseSnapshots, removeSnapshot, toStored, type PlanSnapshot } from "./snapshots";
 import type { Store, Unsubscribe } from "./store";
 
@@ -41,7 +42,7 @@ export function createLocalStore(): Store {
   const mealListeners = new Set<(m: AllMeals) => void>();
   let plan: Plan = read(PLAN_KEY, emptyPlan);
   const planListeners = new Set<(p: Plan) => void>();
-  let checks: Checks = read<Checks>(CHECKS_KEY, () => ({}));
+  let checks: Checks = parseChecks(read<unknown>(CHECKS_KEY, () => ({})));
   const checkListeners = new Set<(c: Checks) => void>();
   let snaps: PlanSnapshot[] = parseSnapshots(read<unknown>(SNAP_KEY, () => null));
   const snapListeners = new Set<(s: PlanSnapshot[]) => void>();
@@ -66,7 +67,7 @@ export function createLocalStore(): Store {
         snapListeners.forEach((l) => l(snaps));
       }
       if (e.key === CHECKS_KEY) {
-        checks = read<Checks>(CHECKS_KEY, () => ({}));
+        checks = parseChecks(read<unknown>(CHECKS_KEY, () => ({})));
         checkListeners.forEach((l) => l(checks));
       }
     });
@@ -98,10 +99,10 @@ export function createLocalStore(): Store {
       write(CONSENSUS_KEY, consensus);
       consensusListeners.forEach((l) => l(consensus));
     },
-    subscribePlan: (cb) => listen<Plan>(planListeners, (p) => cb(p, false), plan),
+    subscribePlan: (cb) => listen<Plan>(planListeners, (p) => cb(p, false, false), plan),
     async updatePlan(change: (p: Plan) => Plan) {
       // ほかのタブで変わっていれば、それに当てる
-      plan = change(read(PLAN_KEY, emptyPlan));
+      plan = guardPlanChange(plan, read(PLAN_KEY, emptyPlan), change);
       write(PLAN_KEY, plan);
       planListeners.forEach((l) => l(plan));
     },
@@ -119,20 +120,23 @@ export function createLocalStore(): Store {
       snapListeners.forEach((l) => l(snaps));
     },
     subscribeChecks: (cb) => listen(checkListeners, cb, checks),
-    async setGotTime(id: string, rideId: string, hm: string | null, by: PersonId) {
+    async setGotTime(id: string, rideId: string, hm: GotTime | null, by: PersonId, expected?: GotTime | null) {
+      if (hm !== null && !isGotTime(hm)) throw Object.assign(new Error("予約時刻が不正です"), { code: "booking/invalid-time" });
+      checks = parseChecks(read<unknown>(CHECKS_KEY, () => ({})));
       const cur = checks[id];
+      if (expected !== undefined && JSON.stringify(cur?.got?.[rideId] ?? null) !== JSON.stringify(expected)) throw Object.assign(new Error("予約が更新されています"), { code: "booking/conflict" });
       const got = { ...(cur?.got ?? {}) };
       if (hm) got[rideId] = hm;
       else delete got[rideId];
-      const base = cur ?? { by, at: Date.now() };
-      checks = { ...checks, [id]: Object.keys(got).length > 0 ? { ...base, got } : { by: base.by, at: base.at } };
+      const base = hm ? { by, at: Date.now() } : cur ?? { by, at: Date.now(), done: false };
+      checks = { ...checks, [id]: Object.keys(got).length > 0 ? { ...base, got } : { ...base } };
       write(CHECKS_KEY, checks);
       checkListeners.forEach((l) => l(checks));
     },
     async setCheck(id: string, done: boolean, by: PersonId) {
-      const next = { ...checks };
-      if (done) next[id] = { by, at: Date.now() };
-      else delete next[id];
+      const next = parseChecks(read<unknown>(CHECKS_KEY, () => ({})));
+      // チェックを外しても取得枠を消さず、再チェックで戻せる
+      next[id] = { ...next[id], by, at: Date.now(), done };
       checks = next;
       write(CHECKS_KEY, checks);
       checkListeners.forEach((l) => l(checks));

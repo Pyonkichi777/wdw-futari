@@ -15,9 +15,4 @@ createRoot(root).render(
   </StrictMode>,
 );
 
-// オフラインでも開けるように、アプリ本体を端末に保存する
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
-  });
-}
+// Service Worker の登録・利用者による更新切替は AppUpdate で管理する

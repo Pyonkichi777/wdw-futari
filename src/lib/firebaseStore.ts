@@ -13,12 +13,13 @@ import {
   type Auth,
   type User,
 } from "firebase/auth";
-import { deleteDoc, deleteField, doc, getDoc, getDocFromCache, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, runTransaction, setDoc, type Firestore } from "firebase/firestore";
+import { deleteDoc, deleteField, doc, getDoc, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, runTransaction, setDoc, type Firestore } from "firebase/firestore";
 import type { Consensus, ConsensusItem, PersonId, Rank, VoteLevel, Votes } from "../types";
 import { emptyConsensus, emptyVotes, type AllVotes } from "./consensus";
 import { emptyMeals, parseMealPrefs, type AllMeals } from "./meals";
-import { parsePlan } from "./plan";
-import { parseChecks } from "./checks";
+import { parsePlan, type Plan } from "./plan";
+import { isGotTime, parseChecks } from "./checks";
+import { guardPlanChange } from "./planSync";
 import { addSnapshot, parseSnapshots, removeSnapshot, toStored } from "./snapshots";
 import type { AuthUser, Store } from "./store";
 
@@ -114,6 +115,7 @@ function parseConsensus(data: unknown): Consensus {
 }
 
 export function createFirestoreStore(fb: FirebaseBackend): Store {
+  let seenPlan: Plan | null = null;
   return {
     subscribeVotes(cb) {
       let all: AllVotes = emptyVotes();
@@ -154,24 +156,20 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
     },
     // 作戦は合意リストと同じ consensus コレクションに置く（セキュリティルールの追加が要らない）
     subscribePlan(cb) {
-      return onSnapshot(doc(fb.db, "consensus", "plan"), { includeMetadataChanges: true }, (snap) => cb(parsePlan(snap.data()), snap.metadata.hasPendingWrites));
+      return onSnapshot(doc(fb.db, "consensus", "plan"), { includeMetadataChanges: true }, (snap) => {
+        seenPlan = parsePlan(snap.data());
+        cb(seenPlan, snap.metadata.hasPendingWrites, snap.metadata.fromCache);
+      });
     },
     async updatePlan(change) {
       const ref = doc(fb.db, "consensus", "plan");
       const plain = (p: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
-      try {
-        // サーバーの最新の作戦に変更を当てる（相手が同時に変えた分を消さない）
-        await runTransaction(fb.db, async (tx) => {
-          const latest = parsePlan((await tx.get(ref)).data());
-          tx.set(ref, plain(change(latest)));
-        });
-      } catch (e) {
-        // 権限がない（ルールの問題）ときは、黙らずに画面に知らせる
-        if (typeof e === "object" && e !== null && (e as { code?: unknown }).code === "permission-denied") throw e;
-        // 圏外などでサーバーに届かないときは、端末にある最新に当てて保存（つながったら自動で送られる）
-        const cached = await getDocFromCache(ref).catch(() => null);
-        void setDoc(ref, plain(change(parsePlan(cached?.data())))).catch((err: unknown) => console.error("作戦の保存に失敗", err));
-      }
+      const expected = seenPlan;
+      // 再試行時も、操作時点で見ていた版と比較。通信断では作戦全体の送信を予約しない
+      await runTransaction(fb.db, async (tx) => {
+        const latest = parsePlan((await tx.get(ref)).data());
+        tx.set(ref, plain(guardPlanChange(expected, latest, change)));
+      });
     },
     subscribeSnapshots(cb) {
       return onSnapshot(doc(fb.db, "consensus", "snapshots"), (snap) => cb(parseSnapshots(snap.data())));
@@ -195,16 +193,18 @@ export function createFirestoreStore(fb: FirebaseBackend): Store {
       return onSnapshot(doc(fb.db, "consensus", "checks"), (snap) => cb(parseChecks(snap.data()?.done)));
     },
     async setCheck(id, done, by) {
-      await setDoc(doc(fb.db, "consensus", "checks"), { done: { [id]: done ? { by, at: Date.now() } : deleteField() } }, { merge: true });
+      await setDoc(doc(fb.db, "consensus", "checks"), { done: { [id]: { by, at: Date.now(), done } } }, { merge: true });
     },
-    async setGotTime(id, rideId, hm, by) {
+    async setGotTime(id, rideId, hm, by, expected) {
+      if (hm !== null && !isGotTime(hm)) throw Object.assign(new Error("予約時刻が不正です"), { code: "booking/invalid-time" });
       // 時刻を入れたら「済」にもする（まだチェックしていなければ、入れた人・日時で）
       const ref = doc(fb.db, "consensus", "checks");
       await runTransaction(fb.db, async (tx) => {
         const cur = parseChecks((await tx.get(ref)).data()?.done)[id];
-        const base = cur ?? { by, at: Date.now() };
+        if (expected !== undefined && JSON.stringify(cur?.got?.[rideId] ?? null) !== JSON.stringify(expected)) throw Object.assign(new Error("予約が更新されています"), { code: "booking/conflict" });
+        const base = cur ?? { by, at: Date.now(), done: false };
         // merge では入れ子の項目は消えないので、消すときは deleteField
-        tx.set(ref, { done: { [id]: { by: base.by, at: base.at, got: { [rideId]: hm ?? deleteField() } } } }, { merge: true });
+        tx.set(ref, { done: { [id]: { by: base.by, at: base.at, ...(hm ? { done: true } : {}), got: { [rideId]: hm ?? deleteField() } } } }, { merge: true });
       });
     },
     subscribeBanner(cb) {
