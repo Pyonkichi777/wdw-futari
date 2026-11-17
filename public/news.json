@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-11T06:55:00+09:00",
+  "updatedAt": "2026-11-18T06:51:24+09:00",
   "trip": {
     "from": "2027-04-29",
     "to": "2027-05-07"
@@ -194,6 +194,33 @@
         {
           "title": "Disney World Sets Reopening Date for Tiana's Bayou Adventure (Blog Mickey)",
           "url": "https://blogmickey.com/2026/10/disney-world-sets-reopening-date-for-tianas-bayou-adventure-following-refurbishment/"
+        }
+      ]
+    },
+    {
+      "id": "2026-08-16-everest-yeti-fix",
+      "publishedAt": "2026-08-16",
+      "title": "エベレストのイエティを直す計画を発表（閉鎖日は未定）",
+      "summary": "ディズニーは2026年8月のD23で、エクスペディション・エベレストの動かなくなったイエティ（大きな人形）を直すと発表した。工事の時期や閉鎖の有無・期間はまだ発表されていない。",
+      "action": "今は対応不要。閉鎖日が発表されて旅行の時期に重なったら、乗る計画を見直す。",
+      "impact": "low",
+      "category": "ride",
+      "rideIds": [
+        "everest"
+      ],
+      "period": {
+        "from": null,
+        "to": null
+      },
+      "overlapsTrip": "maybe",
+      "sources": [
+        {
+          "title": "Expedition Everest Yeti Getting Fixed After Nearly 20 Years, Disney Confirms (WDWMAGIC)",
+          "url": "https://www.wdwmagic.com/attractions/expedition-everest/news/16aug2026-expedition-everest-yeti-getting-fixed-after-nearly-20-years-disney-confirms.htm"
+        },
+        {
+          "title": "It's Happening! Disney World Is Actually Fixing the Yeti in Expedition Everest (Disney Food Blog)",
+          "url": "https://www.disneyfoodblog.com/2026/08/15/its-happening-disney-world-is-actually-fixing-the-yeti-in-expedition-everest/"
         }
       ]
     }
