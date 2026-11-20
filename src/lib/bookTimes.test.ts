@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { rideById } from "../data/rides";
 import type { DayPlan } from "./plan";
 import { dayTimes, timeHints } from "./bookTimes";
+import { dayTimeline } from "./timing";
 
 const day: DayPlan = {
   date: "2027-05-02",
@@ -152,5 +153,34 @@ describe("取れた予約: 最遅だと間に合わない場合", () => {
     const h = timeHints(d, rideById, null, new Map([["peter-pan", got]]));
     expect(h.get("peter-pan")?.late).toBeUndefined();
     expect(h.get("peter-pan")?.worstLate).toBe(true);
+  });
+});
+
+describe("T01: 取れた到着枠の境界と固定予約", () => {
+  const d: DayPlan = { date: "2027-05-04", morningPark: "AK", eveningPark: "AK", items: [{ rideId: "lion-king", slot: "pm", method: "show" }, { rideId: "kilimanjaro", slot: "pm", method: "multi" }] };
+  const arrival = timeHints(d, rideById).get("kilimanjaro")!.arrive;
+  it("開始を過ぎても終了までに着けば間に合い、ちょうど終了も枠内", () => {
+    const hint = timeHints(d, rideById, null, new Map([["kilimanjaro", { from: arrival - 20, to: arrival }]])).get("kilimanjaro")!;
+    expect(hint.at).toBe(arrival);
+    expect(hint.late).toBeUndefined();
+    expect(hint.window).toEqual({ from: arrival - 20, to: arrival });
+  });
+  it("終了を1分過ぎると遅刻。取得枠を勝手にずらさない", () => {
+    const window = { from: arrival - 30, to: arrival - 1 };
+    const hint = timeHints(d, rideById, null, new Map([["kilimanjaro", window]])).get("kilimanjaro")!;
+    expect(hint.late).toBe(true);
+    expect(hint.window).toEqual(window);
+  });
+  it("前の取得枠を最後に使うと固定の食事に遅れる場合を検知し、食事時刻を動かさない", () => {
+    const day: DayPlan = { ...d, items: [{ rideId: "kilimanjaro", slot: "pm", method: "multi" }, { rideId: "dine-tusker-house", slot: "dinner", method: "meal" }] };
+    const hints = timeHints(day, rideById, null, new Map<string, number | { from: number; to: number }>([["kilimanjaro", { from: 900, to: 960 }], ["dine-tusker-house", 980]]));
+    expect(hints.get("dine-tusker-house")).toMatchObject({ at: 980, fixed: true, worstLate: true });
+  });
+  it("最初の夕食の取得時刻に合わせて一日の開始を更新する", () => {
+    const day: DayPlan = { ...d, items: [{ rideId: "dine-tusker-house", slot: "dinner", method: "meal" }] };
+    const result = dayTimes(day, rideById, null, new Map([["dine-tusker-house", 19 * 60]]));
+    expect(result.start).toBe(19 * 60);
+    expect(result.hints.get("dine-tusker-house")?.at).toBe(19 * 60);
+    expect(dayTimeline(day, rideById).segments.length).toBeGreaterThan(0);
   });
 });

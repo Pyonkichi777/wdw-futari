@@ -2,7 +2,7 @@ import type { Consensus, MealPeriod, PersonId, VoteLevel } from "../types";
 import type { AllVotes } from "./consensus";
 import type { AllMeals } from "./meals";
 import type { Plan } from "./plan";
-import type { Checks } from "./checks";
+import type { Checks, GotTime } from "./checks";
 import type { PlanSnapshot } from "./snapshots";
 
 export type Unsubscribe = () => void;
@@ -19,17 +19,17 @@ export interface Store {
   saveConsensus(c: Consensus): Promise<void>;
   /** 5日間の作戦（2人で共有） */
   /** pending = 自分の変更がまだサーバーに届いていない（電波待ち） */
-  subscribePlan(cb: (p: Plan, pending: boolean) => void): Unsubscribe;
+  subscribePlan(cb: (p: Plan, pending: boolean, fromCache: boolean) => void): Unsubscribe;
   /**
-   * 作戦を変える。いちばん新しい作戦（相手の変更を含む）に対して change を当てて保存するので、
-   * 2人が同時に操作しても相手の変更を消さない。圏外のときは端末に保存し、つながったら送る
+   * 確認した版と最新の作戦が一致するときだけ変更する。競合・通信断では失敗を返す。
+   * 圏外で作戦全体を送信待ちにすると、相手の変更を消すため、共有作戦はオンラインで変更する。
    */
   updatePlan(change: (p: Plan) => Plan): Promise<void>;
   /** 予約・購入の「済」チェック（2人で共有） */
   subscribeChecks(cb: (c: Checks) => void): Unsubscribe;
   setCheck(id: string, done: boolean, by: PersonId): Promise<void>;
   /** 取れた予約の時刻（"HH:MM"、null で消す）。入れると「済」にもなる */
-  setGotTime(id: string, rideId: string, hm: string | null, by: PersonId): Promise<void>;
+  setGotTime(id: string, rideId: string, hm: GotTime | null, by: PersonId, expected?: GotTime | null): Promise<void>;
   /** 作戦の保存（2人それぞれが持つ。2人合計10件まで。新しい順） */
   subscribeSnapshots(cb: (list: PlanSnapshot[]) => void): Unsubscribe;
   /** 上限なら replaceOldestOwn のときだけ自分のいちばん古い保存と入れ替える。入れ替えられなければ Error("full") */

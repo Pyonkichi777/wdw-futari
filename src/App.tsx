@@ -3,6 +3,8 @@ import type { PlanSnapshot } from "./lib/snapshots";
 import { fetchHoursFeed, type HoursFeed } from "./lib/hours";
 import { fetchCrowdFeed, type CrowdFeed } from "./lib/crowd";
 import { useEffect, useMemo, useState } from "react";
+import { AppUpdate } from "./components/AppUpdate";
+import { protectedStore } from "./lib/protectedStore";
 import { ConsensusScreen } from "./components/ConsensusScreen";
 import { BannerButton } from "./components/BannerButton";
 import { Countdown } from "./components/Countdown";
@@ -52,10 +54,10 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 const DEMO_PERSON_KEY = "wdw-futari:demo:person";
 
-const fb: FirebaseBackend | null = firebaseConfig ? initFirebase(firebaseConfig) : null;
+const fb: FirebaseBackend | null = firebaseConfig && import.meta.env.VITE_DEMO_MODE !== "true" ? initFirebase(firebaseConfig) : null;
 
 export function App() {
-  return <NewsProvider>{fb ? <FirebaseGate fb={fb} /> : <DemoGate />}</NewsProvider>;
+  return <NewsProvider><AppUpdate />{fb ? <FirebaseGate fb={fb} /> : <DemoGate />}</NewsProvider>;
 }
 
 /** Firebase の設定がまだ無いときの「お試しモード」。データはこの端末にだけ保存される */
@@ -122,7 +124,8 @@ function FirebaseGate({ fb }: { fb: FirebaseBackend }) {
   return <Main me={person} store={store} onSwitch={() => void logout(fb)} switchLabel="ログアウト" />;
 }
 
-function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; store: Store; banner?: string; onSwitch: () => void; switchLabel: string }) {
+function Main({ me, store: rawStore, banner, onSwitch, switchLabel }: { me: PersonId; store: Store; banner?: string; onSwitch: () => void; switchLabel: string }) {
+  const store = useMemo(() => protectedStore(rawStore), [rawStore]);
   const [tab, setTab] = useState<Tab>("vote");
   const [votes, setVotes] = useState<AllVotes>(emptyVotes);
   const [consensus, setConsensus] = useState<Consensus>(emptyConsensus);
@@ -137,11 +140,13 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
   useEffect(() => store.subscribeChecks(setChecks), [store]);
   const [plan, setPlan] = useState<Plan>(emptyPlan);
   const [planPending, setPlanPending] = useState(false);
+  const [planCached, setPlanCached] = useState(false);
   useEffect(
     () =>
-      store.subscribePlan((p, pending) => {
+      store.subscribePlan((p, pending, fromCache) => {
         setPlan(p);
         setPlanPending(pending);
+        setPlanCached(fromCache);
       }),
     [store],
   );
@@ -292,10 +297,12 @@ function Main({ me, store, banner, onSwitch, switchLabel }: { me: PersonId; stor
             plan={plan}
             onUpdate={(change) => store.updatePlan(change).catch(report)}
             pending={planPending}
+            fromCache={planCached}
+            shared={!banner}
             votes={votes}
             checks={checks}
             onCheck={(id, done) => store.setCheck(id, done, me).catch(report)}
-            onGotTime={(id, rid, hm) => store.setGotTime(id, rid, hm, me).catch(report)}
+            onGotTime={(id, rid, hm, expected) => store.setGotTime(id, rid, hm, me, expected)}
             onZukan={(id, anchor) => goZukanFrom("plan", id, anchor)}
             crowd={crowd}
             hours={hours}
