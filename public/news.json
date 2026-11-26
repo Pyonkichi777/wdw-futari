@@ -1,10 +1,37 @@
 {
-  "updatedAt": "2026-11-18T06:51:24+09:00",
+  "updatedAt": "2026-11-27T06:55:00+09:00",
   "trip": {
     "from": "2027-04-29",
     "to": "2027-05-07"
   },
   "items": [
+    {
+      "id": "2026-11-19-pirates-2027-refurb",
+      "publishedAt": "2026-11-19",
+      "title": "カリブの海賊が2027年1月11日から長期休止。旅行中は乗れない見込み",
+      "summary": "マジックキングダムのカリブの海賊（Pirates of the Caribbean）は、2027年1月11日から改装のため休止すると2026年11月19日に発表された（現行版の最終日は1月10日）。3つの場面の更新や新しい演出の追加、長期メンテナンスを行う。再開日は未発表で、2027年の終わりごろ（11月ごろ）の見込みと報じられているため、旅行期間（4/29〜5/7）は休止中の可能性が高い。",
+      "impact": "medium",
+      "category": "ride",
+      "rideIds": [
+        "pirates"
+      ],
+      "period": {
+        "from": "2027-01-11",
+        "to": null
+      },
+      "overlapsTrip": "yes",
+      "action": "マジックキングダムの作戦からカリブの海賊を外し、マルチパスの2番手の候補を別のアトラクションに差し替える",
+      "sources": [
+        {
+          "title": "Laughing Place｜Walt Disney World Closing Pirates of the Caribbean for Lengthy Refurbishment Lasting Most of 2027",
+          "url": "https://www.laughingplace.com/disney-parks/pirates-of-the-caribbean-wdw-2027-refurbishment/"
+        },
+        {
+          "title": "Disney Tourist Blog｜Disney World Closing Pirates of the Caribbean for Nearly Year-Long 2027 Refurbishment",
+          "url": "https://disneytouristblog.com/disney-world-closing-pirates-of-the-caribbean-for-nearly-year-long-2027-refurbishment-and-new-magic/"
+        }
+      ]
+    },
     {
       "id": "2026-10-10-carousel-of-progress-refurb",
       "publishedAt": "2026-10-10",
