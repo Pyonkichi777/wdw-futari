@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { parkName } from "../data/parks";
+import { dayVisit } from "../lib/dayLabel";
+import { useDraftGuard } from "../lib/reloadSafety";
 import type { Plan } from "../lib/plan";
 import { MAX_SNAPSHOTS, type PlanSnapshot } from "../lib/snapshots";
 import { planDiff } from "../lib/planDiff";
@@ -12,7 +13,7 @@ const when = (ms: number): string =>
 const md = (iso: string): string => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 
 /** 日割りのひとこと（例: 5/1 エプコット・5/2 マジックキングダム…） */
-export const planSummary = (p: Plan): string => (p.days.length === 0 ? "（まだ作戦なし）" : p.days.map((d) => `${md(d.date)} ${parkName(d.morningPark)}`).join("・"));
+export const planSummary = (p: Plan): string => (p.days.length === 0 ? "（まだ作戦なし）" : p.days.map((d) => `${md(d.date)} ${dayVisit(d, rideById).label}`).join("・"));
 
 /** 作戦の保存（2人それぞれが持つ。2人合計10件まで）。保存した作戦にいつでも戻せる */
 export function SnapshotPanel({
@@ -33,6 +34,7 @@ export function SnapshotPanel({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  useDraftGuard(name.length > 0 || busy);
   const full = list.length >= MAX_SNAPSHOTS;
   const myOldest = [...list].filter((s) => s.by === me).sort((a, b) => a.savedAt - b.savedAt)[0];
 
@@ -68,7 +70,7 @@ export function SnapshotPanel({
           {list.length}/{MAX_SNAPSHOTS}件（2人合計）
         </span>
       </summary>
-      <p className="note">今の作戦（日割り・乗り物・食事・時刻・外したもの・手で決めた日）をそのまま保存します。保存は2人それぞれが持ち、保存日時を表示します。保存した作戦にはいつでも戻せます。</p>
+      <p className="note">今の作戦（日割り・乗り物・食事・余裕時間・外したもの・手で決めた日。取得した予約時刻・到着枠は予約チェック側に残ります）をそのまま保存します。保存は2人それぞれが持ち、保存日時を表示します。保存した作戦にはいつでも戻せます。</p>
       <div className="snap-save">
         <input type="text" value={name} maxLength={40} placeholder="名前（例: アニマル優先の案）" onChange={(e) => setName(e.target.value)} aria-label="保存する名前" />
         <button className="primary" disabled={busy || plan.days.length === 0} onClick={() => void save()}>
@@ -100,7 +102,7 @@ export function SnapshotPanel({
                         // 戻す前に、何が変わるかを見せる
                         const diff = planDiff(plan, s.plan, (id) => rideById(id)?.nameJa ?? id);
                         const what = diff.length > 0 ? `変わるところ:\n${diff.join("\n")}` : "今の作戦と同じ内容です（日割り・予定の出入りはありません）";
-                        if (window.confirm(`「${s.name}」（${when(s.savedAt)}）の作戦に戻します。\n\n${what}\n\n今の作戦は2人とも置き換わります（予約のチェックはそのまま）。今の作戦を残したいときは、先に保存してください。よろしいですか？`)) onRestore(s);
+                        if (window.confirm(`「${s.name}」（${when(s.savedAt)}）の作戦に戻します。\n\n${what}\n\n今の作戦は2人とも置き換わります（予約のチェック・取得時刻・到着枠はそのまま）。今の作戦を残したいときは、先に保存してください。よろしいですか？`)) onRestore(s);
                       }}
                     >
                       この作戦に戻す
